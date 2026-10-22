@@ -20,6 +20,7 @@ import {
   releaseMissingShots,
   startRetake,
 } from '@/src/features/photobooth/domain/session'
+import { useNavigationLock } from '@/src/features/photobooth/hooks/useNavigationLock'
 import { usePhotoboothSession } from '@/src/features/photobooth/hooks/usePhotoboothSession'
 import { usePhotoUrls } from '@/src/features/photobooth/hooks/usePhotoUrls'
 import ShotImage from './ShotImage'
@@ -31,9 +32,9 @@ export default function ReviewScreen() {
   const router = useRouter()
   const { session, isLoaded, apply, actionError } = usePhotoboothSession(PHOTOBOOTH_ROUTES.REVIEW)
   const draftId = session?.retake?.draftPhotoId ?? null
-  const { urls, isLoading, missingIds } = usePhotoUrls(session ? [...session.shots, draftId] : [])
+  const { urls, isLoading, missingIds, unreadableIds, retry } = usePhotoUrls(session ? [...session.shots, draftId] : [])
   const [openIndex, setOpenIndex] = useState<number | null>(null)
-  const [isLeaving, setIsLeaving] = useState(false)
+  const [isLeaving, setIsLeaving] = useNavigationLock()
 
   if (!isLoaded || !session) {
     return (
@@ -55,7 +56,8 @@ export default function ReviewScreen() {
     return `${slot.width} / ${slot.height}`
   }
 
-  const hasMissing = missingIds.length > 0
+  const problemIds = [...missingIds, ...unreadableIds]
+  const hasMissing = problemIds.length > 0
   const isDraftReady = Boolean(retake?.draftPhotoId && draftUrl)
 
   function go(route: PhotoboothRoute) {
@@ -75,7 +77,7 @@ export default function ReviewScreen() {
 
   function handleRecover() {
     if (isLeaving) return
-    const next = apply((current, now) => releaseMissingShots(current, missingIds, now), { deleteDropped: false })
+    const next = apply((current, now) => releaseMissingShots(current, problemIds, now), { deleteDropped: false })
     if (!next) return
     setOpenIndex(null)
     const route = getResumeRoute(next)
@@ -101,7 +103,13 @@ export default function ReviewScreen() {
 
       {hasMissing ? (
         <div className="mt-3">
-          <MissingPhotosNotice count={missingIds.length} onRecover={handleRecover} disabled={isLeaving} />
+          <MissingPhotosNotice
+            missingCount={missingIds.length}
+            unreadableCount={unreadableIds.length}
+            onRecover={handleRecover}
+            onRetry={retry}
+            disabled={isLeaving}
+          />
         </div>
       ) : null}
       {actionError ? (

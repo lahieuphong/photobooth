@@ -93,6 +93,12 @@ const SESSIONS = 'sessions'
 const BY_SESSION = 'bySession'
 /** A tab still running older code holds the v1 connection open until it reacts to versionchange. */
 const OPEN_TIMEOUT_MS = 5000
+/**
+ * WebKit can leave a transaction hanging after the page was backgrounded. Every
+ * photoStore mutation waits on the previous one, so a hung transaction would
+ * stall saving, deleting and the kiosk busy marker for good.
+ */
+const TRANSACTION_TIMEOUT_MS = 15_000
 
 function upgrade(request: IDBOpenDBRequest, oldVersion: number) {
   const database = request.result
@@ -208,14 +214,36 @@ export async function openIndexedDbBackend(): Promise<IndexedDbOpenResult> {
         reject(error)
         return
       }
-      transaction.oncomplete = () => resolve(result)
-      transaction.onerror = () => reject(transaction.error)
-      transaction.onabort = () => reject(transaction.error ?? new Error('IDB_ABORTED'))
+      const timer = setTimeout(() => {
+        connection = null
+        reject(new Error('IDB_TRANSACTION_TIMEOUT'))
+        try {
+          transaction.abort()
+        } catch {
+          // already finished
+        }
+      }, TRANSACTION_TIMEOUT_MS)
+      transaction.oncomplete = () => {
+        clearTimeout(timer)
+        resolve(result)
+      }
+      // A failing request bubbles here before the transaction aborts, while
+      // transaction.error is still null: report the request's own error
+      // (e.g. QuotaExceededError) so callers can tell why it failed.
+      transaction.onerror = (event) => {
+        clearTimeout(timer)
+        reject((event.target as IDBRequest | null)?.error ?? transaction.error ?? new Error('IDB_ERROR'))
+      }
+      transaction.onabort = () => {
+        clearTimeout(timer)
+        reject(transaction.error ?? new Error('IDB_ABORTED'))
+      }
       try {
         operate(transaction, (value) => {
           result = value
         })
       } catch (error) {
+        clearTimeout(timer)
         try {
           transaction.abort()
         } catch {

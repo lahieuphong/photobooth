@@ -1,17 +1,24 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { loadPhoto } from '@/src/features/photobooth/services/storage/photoStore'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { loadPhotoResult } from '@/src/features/photobooth/services/storage/photoStore'
 
 type PhotoUrls = {
-  /** Object URLs aligned with `ids`; null for empty slots, missing photos and photos still loading. */
+  /** Object URLs aligned with `ids`; null for empty slots, problem photos and photos still loading. */
   urls: Array<string | null>
   isLoading: boolean
-  /** Ids whose photo is gone from this device or cannot be decoded. Empty while loading. */
+  /** Confirmed gone from this device. Empty while loading. */
   missingIds: string[]
+  /**
+   * Could not be read or decoded right now (storage error, memory pressure,
+   * corrupt blob). They may still exist, so they are never dropped automatically.
+   */
+  unreadableIds: string[]
+  /** Loads the problem photos again. */
+  retry: () => void
 }
 
-/** Photos already decoded once in this page; decoding is only needed to catch corrupt blobs. */
+/** Photos already decoded once in this page; decoding is only needed to catch unusable blobs. */
 const decodedIds = new Set<string>()
 
 async function canDecode(blob: Blob) {
@@ -36,9 +43,14 @@ async function canDecode(blob: Blob) {
   }
 }
 
-type Snapshot = { key: string; urls: ReadonlyMap<string, string>; missing: ReadonlySet<string> }
+type Snapshot = {
+  key: string
+  urls: ReadonlyMap<string, string>
+  missing: ReadonlySet<string>
+  unreadable: ReadonlySet<string>
+}
 
-const EMPTY: Snapshot = { key: '', urls: new Map(), missing: new Set() }
+const EMPTY: Snapshot = { key: '', urls: new Map(), missing: new Set(), unreadable: new Set() }
 
 /**
  * Object URLs for stored photos, aligned with `ids`. URLs are reused while the
@@ -49,6 +61,8 @@ export function usePhotoUrls(ids: Array<string | null>): PhotoUrls {
   const cacheRef = useRef(new Map<string, string>())
   const generationRef = useRef(0)
   const [snapshot, setSnapshot] = useState<Snapshot>(EMPTY)
+  const [attempt, setAttempt] = useState(0)
+  const loadKey = `${key}#${attempt}`
 
   useEffect(() => {
     const generation = ++generationRef.current
@@ -58,21 +72,22 @@ export function usePhotoUrls(ids: Array<string | null>): PhotoUrls {
 
     void (async () => {
       const missing = new Set<string>()
+      const unreadable = new Set<string>()
       for (const id of wanted) {
         if (cache.has(id)) continue
-        const blob = await loadPhoto(id).catch(() => null)
-        const usable = blob !== null && (decodedIds.has(id) || (await canDecode(blob)))
+        const result = await loadPhotoResult(id).catch(() => ({ status: 'error' as const }))
+        const usable = result.status === 'found' && (decodedIds.has(id) || (await canDecode(result.blob)))
         if (!isCurrent()) return
-        if (!blob || !usable) {
-          missing.add(id)
-          continue
+        if (result.status === 'missing') missing.add(id)
+        else if (result.status === 'error' || !usable) unreadable.add(id)
+        else {
+          decodedIds.add(id)
+          cache.set(id, URL.createObjectURL(result.blob))
         }
-        decodedIds.add(id)
-        cache.set(id, URL.createObjectURL(blob))
       }
 
       const urls = new Map([...cache].filter(([id]) => wanted.has(id)))
-      setSnapshot({ key, urls, missing })
+      setSnapshot({ key: loadKey, urls, missing, unreadable })
 
       // Revoke after React has committed the snapshot that no longer shows them,
       // unless a newer run has started (it takes over the cleanup).
@@ -85,7 +100,7 @@ export function usePhotoUrls(ids: Array<string | null>): PhotoUrls {
         }
       }, 0)
     })()
-  }, [key])
+  }, [key, loadKey])
 
   useEffect(() => {
     const cache = cacheRef.current
@@ -97,11 +112,17 @@ export function usePhotoUrls(ids: Array<string | null>): PhotoUrls {
     }
   }, [])
 
-  const isLoading = snapshot.key !== key
+  const retry = useCallback(() => setAttempt((value) => value + 1), [])
+  const isLoading = snapshot.key !== loadKey
+  const pick = (set: ReadonlySet<string>) =>
+    isLoading ? [] : ids.filter((id): id is string => id !== null && set.has(id))
+
   return {
     // While a new set loads, photos that were already shown stay visible.
     urls: ids.map((id) => (id ? snapshot.urls.get(id) ?? null : null)),
     isLoading,
-    missingIds: isLoading ? [] : ids.filter((id): id is string => id !== null && snapshot.missing.has(id)),
+    missingIds: pick(snapshot.missing),
+    unreadableIds: pick(snapshot.unreadable),
+    retry,
   }
 }

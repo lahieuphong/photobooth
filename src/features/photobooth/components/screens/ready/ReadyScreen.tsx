@@ -22,6 +22,7 @@ import {
   type PhotoboothCountdown,
 } from '@/src/features/photobooth/domain/session'
 import { useCamera } from '@/src/features/photobooth/hooks/useCamera'
+import { useNavigationLock } from '@/src/features/photobooth/hooks/useNavigationLock'
 import { usePhotoboothSession } from '@/src/features/photobooth/hooks/usePhotoboothSession'
 import { usePhotoUrls } from '@/src/features/photobooth/hooks/usePhotoUrls'
 import { getPhotoStoreStatus } from '@/src/features/photobooth/services/storage/photoStore'
@@ -40,7 +41,7 @@ export default function ReadyScreen() {
   const camera = useCamera(isLoaded)
   const { isLoading: isLoadingPhotos, missingIds } = usePhotoUrls(session?.shots ?? [])
   const [pickedCountdown, setPickedCountdown] = useState<PhotoboothCountdown | null>(null)
-  const [isLeaving, setIsLeaving] = useState(false)
+  const [isLeaving, setIsLeaving] = useNavigationLock()
   const [notice, setNotice] = useState<string | null>(null)
   const [isMemoryOnly, setIsMemoryOnly] = useState(false)
 

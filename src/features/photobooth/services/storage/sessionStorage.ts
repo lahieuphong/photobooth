@@ -53,6 +53,16 @@ export function readStoredSession(): { session: PhotoboothSession | null; discar
   return { session: null, discarded: true }
 }
 
+/** Id of the stored session without any cleanup side effects (for background checks). */
+export function peekStoredSessionId(): string | null {
+  try {
+    const raw = getStorage()?.getItem(SESSION_KEY) ?? null
+    return raw === null ? null : parseSession(JSON.parse(raw))?.id ?? null
+  } catch {
+    return null
+  }
+}
+
 export function writeStoredSession(session: PhotoboothSession) {
   const storage = getStorage()
   if (!storage) throw new Error('SESSION_STORAGE_UNAVAILABLE')

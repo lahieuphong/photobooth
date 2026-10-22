@@ -25,6 +25,7 @@ import {
   setLayout,
   setLook,
 } from '@/src/features/photobooth/domain/session'
+import { useNavigationLock } from '@/src/features/photobooth/hooks/useNavigationLock'
 import { usePhotoboothSession } from '@/src/features/photobooth/hooks/usePhotoboothSession'
 import { usePhotoUrls } from '@/src/features/photobooth/hooks/usePhotoUrls'
 
@@ -78,9 +79,9 @@ function OptionButton({
 export default function StudioScreen() {
   const router = useRouter()
   const { session, isLoaded, apply, actionError } = usePhotoboothSession(PHOTOBOOTH_ROUTES.STUDIO)
-  const { urls, isLoading, missingIds } = usePhotoUrls(session?.shots ?? [])
+  const { urls, isLoading, missingIds, unreadableIds, retry } = usePhotoUrls(session?.shots ?? [])
   const [tab, setTab] = useState<StudioTab>('look')
-  const [isLeaving, setIsLeaving] = useState(false)
+  const [isLeaving, setIsLeaving] = useNavigationLock()
 
   if (!isLoaded || !session) {
     return (
@@ -96,7 +97,8 @@ export default function StudioScreen() {
   const dateLabel = formatFrameDate(session.createdAt)
   const composition = { layoutId: session.layoutId, frameId: session.frameId, lookId: session.lookId, photoUrls: urls, dateLabel }
 
-  const hasMissing = missingIds.length > 0
+  const problemIds = [...missingIds, ...unreadableIds]
+  const hasMissing = problemIds.length > 0
   const isLocked = isLeaving || hasMissing
 
   function handleFinish() {
@@ -108,7 +110,7 @@ export default function StudioScreen() {
 
   function handleRecover() {
     if (isLeaving) return
-    const next = apply((current, now) => releaseMissingShots(current, missingIds, now), { deleteDropped: false })
+    const next = apply((current, now) => releaseMissingShots(current, problemIds, now), { deleteDropped: false })
     if (!next) return
     setIsLeaving(true)
     router.push(getResumeRoute(next), { scroll: false })
@@ -140,7 +142,15 @@ export default function StudioScreen() {
             <p className="mt-1 text-[14px] text-ink-soft">Mọi thay đổi chỉ áp dụng lên ảnh hoàn chỉnh — ảnh gốc luôn được giữ nguyên.</p>
           </div>
 
-          {hasMissing ? <MissingPhotosNotice count={missingIds.length} onRecover={handleRecover} disabled={isLeaving} /> : null}
+          {hasMissing ? (
+            <MissingPhotosNotice
+              missingCount={missingIds.length}
+              unreadableCount={unreadableIds.length}
+              onRecover={handleRecover}
+              onRetry={retry}
+              disabled={isLeaving}
+            />
+          ) : null}
 
           <div role="tablist" aria-label="Tùy chỉnh" className="grid grid-cols-3 gap-1 rounded-full bg-paper-deep p-1">
             {TABS.map((item) => (

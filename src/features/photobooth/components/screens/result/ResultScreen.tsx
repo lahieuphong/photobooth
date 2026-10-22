@@ -17,6 +17,7 @@ import { getLayout } from '@/src/features/photobooth/domain/layouts'
 import { getLook } from '@/src/features/photobooth/domain/looks'
 import { getResumeRoute } from '@/src/features/photobooth/domain/routeGuard'
 import { enterStudio, releaseMissingShots } from '@/src/features/photobooth/domain/session'
+import { useNavigationLock } from '@/src/features/photobooth/hooks/useNavigationLock'
 import { usePhotoboothSession } from '@/src/features/photobooth/hooks/usePhotoboothSession'
 import { usePhotoUrls } from '@/src/features/photobooth/hooks/usePhotoUrls'
 import {
@@ -45,10 +46,10 @@ function describeExportError(error: unknown) {
 export default function ResultScreen() {
   const router = useRouter()
   const { session, isLoaded, apply, actionError } = usePhotoboothSession(PHOTOBOOTH_ROUTES.RESULT)
-  const { urls, isLoading, missingIds } = usePhotoUrls(session?.shots ?? [])
+  const { urls, isLoading, missingIds, unreadableIds, retry } = usePhotoUrls(session?.shots ?? [])
   const [exportState, setExportState] = useState<ExportState>({ status: 'idle' })
   const [isConfirmingRestart, setIsConfirmingRestart] = useState(false)
-  const [isLeaving, setIsLeaving] = useState(false)
+  const [isLeaving, setIsLeaving] = useNavigationLock()
 
   if (!isLoaded || !session) {
     return (
@@ -61,7 +62,8 @@ export default function ResultScreen() {
 
   const layout = getLayout(session.layoutId)
   const dateLabel = formatFrameDate(session.createdAt)
-  const hasMissing = missingIds.length > 0
+  const problemIds = [...missingIds, ...unreadableIds]
+  const hasMissing = problemIds.length > 0
   const isExporting = exportState.status === 'working'
   const canExport = !isLoading && !hasMissing && !isExporting && !isLeaving
 
@@ -97,7 +99,7 @@ export default function ResultScreen() {
 
   function handleRecover() {
     if (isLeaving || isExporting) return
-    const next = apply((current, now) => releaseMissingShots(current, missingIds, now), { deleteDropped: false })
+    const next = apply((current, now) => releaseMissingShots(current, problemIds, now), { deleteDropped: false })
     if (!next) return
     setIsLeaving(true)
     router.push(getResumeRoute(next), { scroll: false })
@@ -140,7 +142,15 @@ export default function ResultScreen() {
             </p>
           </div>
 
-          {hasMissing ? <MissingPhotosNotice count={missingIds.length} onRecover={handleRecover} disabled={isLeaving || isExporting} /> : null}
+          {hasMissing ? (
+            <MissingPhotosNotice
+              missingCount={missingIds.length}
+              unreadableCount={unreadableIds.length}
+              onRecover={handleRecover}
+              onRetry={retry}
+              disabled={isLeaving || isExporting}
+            />
+          ) : null}
 
           <Button onClick={() => void handleDownload()} disabled={!canExport} size="lg" className="w-full">
             {isExporting ? (
@@ -193,7 +203,8 @@ export default function ResultScreen() {
           </div>
           {isConfirmingRestart ? (
             <p className="text-[12px] text-ink-soft">
-              Ảnh của phiên này sẽ bị xóa khỏi máy. Hãy tải ảnh về trước nếu muốn giữ.{' '}
+              Ảnh của phiên này sẽ bị xóa khỏi bộ nhớ trình duyệt; ảnh PNG đã tải về vẫn được giữ. Hãy tải ảnh về trước
+              nếu muốn giữ.{' '}
               <button type="button" className="font-semibold text-ink underline underline-offset-2" onClick={() => setIsConfirmingRestart(false)}>
                 Hủy
               </button>

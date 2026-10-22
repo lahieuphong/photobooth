@@ -14,9 +14,10 @@ permissions:
   id-token: write
 
 concurrency:
-  # Deploys share one group; each pull request gets its own so it cannot cancel a deploy.
+  # Deploys share one group and queue up, so a new push never cancels a deploy midway.
+  # Each pull request gets its own group, where only the latest run matters.
   group: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.ref) || 'pages' }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:

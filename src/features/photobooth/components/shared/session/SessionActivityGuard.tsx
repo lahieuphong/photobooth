@@ -16,15 +16,23 @@ import {
 } from '@/src/features/photobooth/services/session/activity'
 import { collectGarbage, endSession, touchSession } from '@/src/features/photobooth/services/storage/photoStore'
 import { releaseSession } from '@/src/features/photobooth/services/storage/sessionOwnership'
-import { clearStoredSession, readStoredSession } from '@/src/features/photobooth/services/storage/sessionStorage'
+import {
+  clearStoredSession,
+  peekStoredSessionId,
+  readStoredSession,
+} from '@/src/features/photobooth/services/storage/sessionStorage'
+import { getAssetPath } from '@/src/features/photobooth/utils/assetPath'
 
 const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const
 const HEARTBEAT_MS = 60_000
 const KIOSK_GC_MS = 5 * 60_000
 const TOAST_MS = 10_000
+/** Client navigation is occasionally dropped on the static export; the session is already gone by then. */
+const EXPIRY_NAVIGATION_FALLBACK_MS = 2000
 
-function currentSessionId() {
-  return readStoredSession().session?.id ?? null
+/** Modal dialogs (the Review lightbox) live in the top layer, above any z-index; close them first. */
+function closeOpenDialogs() {
+  document.querySelectorAll('dialog[open]').forEach((dialog) => (dialog as HTMLDialogElement).close())
 }
 
 /**
@@ -46,6 +54,10 @@ export default function SessionActivityGuard() {
   useEffect(() => {
     rememberKioskParam(window.location.search)
     setSettings(getKioskSettings())
+    // Turning kiosk mode on or off in another tab applies here too.
+    const refresh = () => setSettings(getKioskSettings())
+    window.addEventListener('storage', refresh)
+    return () => window.removeEventListener('storage', refresh)
   }, [])
 
   useEffect(() => {
@@ -55,7 +67,7 @@ export default function SessionActivityGuard() {
       recordActivity(now)
       if (now - lastHeartbeatAt < HEARTBEAT_MS) return
       lastHeartbeatAt = now
-      const sessionId = currentSessionId()
+      const sessionId = peekStoredSessionId()
       if (sessionId) void touchSession(sessionId)
     }
 
@@ -73,6 +85,7 @@ export default function SessionActivityGuard() {
     async function expire() {
       expiringRef.current = true
       // Cover the screen before anything else so the next visitor never sees the photos.
+      closeOpenDialogs()
       setIsExpiring(true)
       try {
         const session = readStoredSession().session
@@ -82,15 +95,22 @@ export default function SessionActivityGuard() {
           clearStoredSession()
           setToast(
             complete
-              ? 'Phiên trước đã kết thúc vì không có thao tác. Ảnh của phiên đó đã được xóa khỏi máy.'
+              ? 'Phiên trước đã kết thúc vì không có thao tác. Ảnh của phiên đó đã được xóa khỏi bộ nhớ trình duyệt.'
               : 'Phiên trước đã kết thúc vì không có thao tác, nhưng một số ảnh chưa xóa được khỏi bộ nhớ trình duyệt. Hệ thống sẽ thử xóa lại.'
           )
         }
         resetActivity()
         setPhase({ phase: 'active' })
         // Already on the cover: no navigation will happen to lift the privacy screen.
-        if (isCover) setIsExpiring(false)
-        else router.replace(PHOTOBOOTH_ROUTES.WELCOME)
+        if (isCover) {
+          setIsExpiring(false)
+        } else {
+          router.replace(PHOTOBOOTH_ROUTES.WELCOME)
+          window.setTimeout(() => {
+            const onCover = /\/welcome\/?$/.test(window.location.pathname)
+            if (!onCover) window.location.replace(getAssetPath(`${PHOTOBOOTH_ROUTES.WELCOME}/`))
+          }, EXPIRY_NAVIGATION_FALLBACK_MS)
+        }
       } finally {
         expiringRef.current = false
       }
@@ -98,7 +118,7 @@ export default function SessionActivityGuard() {
 
     function tick() {
       if (expiringRef.current) return
-      const hasSession = currentSessionId() !== null
+      const hasSession = peekStoredSessionId() !== null
       if (!hasSession && isCover) {
         setPhase({ phase: 'active' })
         return
@@ -113,13 +133,14 @@ export default function SessionActivityGuard() {
       })
       // Without a session there is nothing to warn about; just return to the cover.
       setPhase(hasSession ? next : { phase: 'active' })
+      if (hasSession && next.phase === 'warning') closeOpenDialogs()
       if (next.phase === 'expired') void expire()
     }
 
     tick()
     const ticker = window.setInterval(tick, 1000)
     const collector = window.setInterval(() => {
-      const sessionId = currentSessionId()
+      const sessionId = peekStoredSessionId()
       void collectGarbage(sessionId ? [sessionId] : [])
     }, KIOSK_GC_MS)
     return () => {
@@ -161,7 +182,7 @@ export default function SessionActivityGuard() {
                 Bạn vẫn đang dùng chứ?
               </p>
               <p id="idle-warning-body" className="text-[13px] leading-snug text-ink-soft" aria-live="polite">
-                Phiên sẽ tự kết thúc sau {Math.ceil(phase.remainingMs / 1000)} giây và ảnh sẽ bị xóa khỏi máy.
+                Phiên sẽ tự kết thúc sau {Math.ceil(phase.remainingMs / 1000)} giây và ảnh sẽ bị xóa khỏi bộ nhớ trình duyệt.
               </p>
             </div>
             <Button onClick={() => recordActivity()}>Tiếp tục phiên</Button>

@@ -59,7 +59,7 @@ function createTab(backend: PhotoBackend, clock: { now: number }) {
 }
 
 async function exists(store: ReturnType<typeof createTab>, id: string) {
-  return (await store.loadPhoto(id)) !== null
+  return (await store.loadPhoto(id)).status === 'found'
 }
 
 describe('photo store: concurrency', () => {
@@ -338,7 +338,7 @@ describe('photo store: degraded storage', () => {
     const id = await store.savePhoto('s', photo())
     assert.equal(await exists(store as ReturnType<typeof createTab>, id), true)
     assert.deepEqual(await store.endSession('s'), { complete: true })
-    assert.equal(await store.loadPhoto(id), null)
+    assert.deepEqual(await store.loadPhoto(id), { status: 'missing' })
   })
 
   test('a transient read failure is retried before a photo is reported missing', async () => {
@@ -353,6 +353,34 @@ describe('photo store: degraded storage', () => {
       },
     }
     const store = createPhotoStore({ openPersistent: async () => ({ backend: flaky }) })
-    assert.notEqual(await store.loadPhoto('p'), null)
+    assert.equal((await store.loadPhoto('p')).status, 'found')
+  })
+
+  test('a failed open is not remembered: storage that comes back is used again', async () => {
+    const { backend } = createSharedBackend()
+    let available = false
+    const store = createPhotoStore({
+      openPersistent: async () => (available ? { backend } : { backend: null, reason: 'error' }),
+    })
+    assert.deepEqual(await store.getStatus(), { persistent: false, reason: 'error' })
+
+    available = true
+    assert.deepEqual(await store.getStatus(), { persistent: true, reason: 'ok' })
+    await store.savePhoto('s', photo())
+    assert.equal(store.hasMemoryOnlyPhotos(), false)
+  })
+
+  test('unreadable storage is reported as an error, never as a missing photo', async () => {
+    const { backend } = createSharedBackend()
+    const broken: PhotoBackend = {
+      ...backend,
+      async getPhoto() {
+        throw new Error('connection closed')
+      },
+    }
+    assert.deepEqual(await createTab(broken, { now: 0 }).loadPhoto('p'), { status: 'error' })
+
+    const cannotOpen = createPhotoStore({ openPersistent: async () => ({ backend: null, reason: 'error' }) })
+    assert.deepEqual(await cannotOpen.loadPhoto('p'), { status: 'error' })
   })
 })

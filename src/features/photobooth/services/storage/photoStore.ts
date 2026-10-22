@@ -26,12 +26,20 @@ import {
 // Every mutation runs through one queue, so cleanups in this tab never overlap.
 
 export type PhotoStoreStatus = {
-  /** False once any photo had to be kept in memory; a full page reload would lose it. */
+  /** False when photos saved now (or already) would not survive a full page reload. */
   persistent: boolean
   reason: 'ok' | 'unavailable' | 'quota' | 'error'
 }
 
+type FallbackReason = Exclude<PhotoStoreStatus['reason'], 'ok'>
+
 type OpenResult = { backend: PhotoBackend } | { backend: null; reason: 'unsupported' | 'error' }
+
+/**
+ * `missing`: confirmed absent from every storage this page can reach.
+ * `error`: storage could not be read right now; the photo may well still exist.
+ */
+export type PhotoLoadResult = { status: 'found'; blob: Blob } | { status: 'missing' } | { status: 'error' }
 
 type PhotoStoreOptions = {
   openPersistent: () => Promise<OpenResult>
@@ -58,7 +66,8 @@ export function isQuotaError(error: unknown) {
 export function createPhotoStore({ openPersistent, now = Date.now, orphanCutoffMs = () => 24 * 60 * 60 * 1000 }: PhotoStoreOptions) {
   const memory = createMemoryBackend()
   let opened: Promise<OpenResult> | null = null
-  let status: PhotoStoreStatus = { persistent: true, reason: 'ok' }
+  /** Set once a photo really had to be kept in memory: from then on a reload loses data. */
+  let memoryFallback: FallbackReason | null = null
   let tail: Promise<unknown> = Promise.resolve()
   let gcRequest: { protectedIds: Set<string>; done: Promise<void> } | null = null
   const lastTouchAt = new Map<string, number>()
@@ -70,8 +79,9 @@ export function createPhotoStore({ openPersistent, now = Date.now, orphanCutoffM
     return run
   }
 
-  function degrade(reason: Exclude<PhotoStoreStatus['reason'], 'ok'>) {
-    if (status.persistent) status = { persistent: false, reason }
+  function fallbackReason(result: OpenResult): FallbackReason | null {
+    if (result.backend) return null
+    return result.reason === 'unsupported' ? 'unavailable' : 'error'
   }
 
   /** The persistent backend, or null with the reason; a failed open is retried on next use. */
@@ -117,19 +127,19 @@ export function createPhotoStore({ openPersistent, now = Date.now, orphanCutoffM
     }
   }
 
-  async function putPersistent(backend: PhotoBackend, photo: StoredPhoto, protectedIds: Set<string>) {
+  /** Null when stored; otherwise why the photo has to fall back to memory. */
+  async function putPersistent(backend: PhotoBackend, photo: StoredPhoto, protectedIds: Set<string>): Promise<FallbackReason | null> {
     try {
       await backend.putPhoto(photo)
-      return true
+      return null
     } catch (error) {
       // Full: free abandoned sessions first. Otherwise retry once (the connection reopens).
       if (isQuotaError(error)) await collectNow(protectedIds)
       try {
         await backend.putPhoto(photo)
-        return true
+        return null
       } catch (retryError) {
-        degrade(isQuotaError(retryError) ? 'quota' : 'error')
-        return false
+        return isQuotaError(retryError) ? 'quota' : 'error'
       }
     }
   }
@@ -144,32 +154,39 @@ export function createPhotoStore({ openPersistent, now = Date.now, orphanCutoffM
       return serial(async () => {
         const photo: StoredPhoto = { id: createPhotoId(sessionId), sessionId, blob, createdAt: now() }
         const persistent = await getPersistent()
+        const failure = persistent.backend
+          ? await putPersistent(persistent.backend, photo, new Set([sessionId]))
+          : fallbackReason(persistent)
 
-        if (persistent.backend && (await putPersistent(persistent.backend, photo, new Set([sessionId])))) {
+        if (!failure) {
           lastTouchAt.set(sessionId, photo.createdAt)
           return photo.id
         }
-        if (!persistent.backend) degrade(persistent.reason === 'unsupported' ? 'unavailable' : 'error')
-
         await memory.putPhoto(photo)
+        memoryFallback ??= failure
         return photo.id
       })
     },
 
-    /** The stored blob, or null when it is missing on this device. */
-    async loadPhoto(id: string): Promise<Blob | null> {
+    /** Reads a photo, telling "not stored" apart from "storage unreadable right now". */
+    async loadPhoto(id: string): Promise<PhotoLoadResult> {
       const inMemory = await memory.getPhoto(id)
-      if (inMemory) return inMemory
+      if (inMemory) return { status: 'found', blob: inMemory }
 
       for (let attempt = 0; attempt < 2; attempt += 1) {
         try {
           const persistent = await getPersistent()
-          return persistent.backend ? await persistent.backend.getPhoto(id) : null
+          if (!persistent.backend) {
+            if (persistent.reason === 'unsupported') return { status: 'missing' }
+            continue
+          }
+          const blob = await persistent.backend.getPhoto(id)
+          return blob ? { status: 'found', blob } : { status: 'missing' }
         } catch {
           // A dropped connection reopens on the second attempt.
         }
       }
-      return null
+      return { status: 'error' }
     },
 
     /** Deletes photos a session transition no longer references. */
@@ -243,16 +260,19 @@ export function createPhotoStore({ openPersistent, now = Date.now, orphanCutoffM
       return request.done
     },
 
-    /** Probes storage once so screens can warn before the first photo is taken. */
+    /**
+     * Probes storage so screens can warn before the first photo is taken. A
+     * failed open is not remembered: the next probe tries again.
+     */
     async getStatus(): Promise<PhotoStoreStatus> {
-      const persistent = await getPersistent()
-      if (!persistent.backend) degrade(persistent.reason === 'unsupported' ? 'unavailable' : 'error')
-      return status
+      if (memoryFallback) return { persistent: false, reason: memoryFallback }
+      const reason = fallbackReason(await getPersistent())
+      return reason ? { persistent: false, reason } : { persistent: true, reason: 'ok' }
     },
 
-    /** Synchronous view of the last known status. */
-    peekStatus(): PhotoStoreStatus {
-      return status
+    /** Whether any photo of this page lives only in memory (a reload would lose it). */
+    hasMemoryOnlyPhotos(): boolean {
+      return memoryFallback !== null
     },
   }
 }
@@ -262,7 +282,13 @@ export type PhotoStore = ReturnType<typeof createPhotoStore>
 const store = createPhotoStore({ openPersistent: openIndexedDbBackend, orphanCutoffMs: getOrphanCutoffMs })
 
 export const savePhoto = store.savePhoto
-export const loadPhoto = store.loadPhoto
+export const loadPhotoResult = store.loadPhoto
+
+/** The stored blob, or null when it cannot be read for any reason. */
+export async function loadPhoto(id: string): Promise<Blob | null> {
+  const result = await store.loadPhoto(id)
+  return result.status === 'found' ? result.blob : null
+}
 export const deletePhotos = store.deletePhotos
 export const touchSession = store.touchSession
 export const endSession = store.endSession
@@ -271,5 +297,5 @@ export const getPhotoStoreStatus = store.getStatus
 
 /** Whether every photo saved so far survives a full page reload. */
 export function isPhotoStorePersistent() {
-  return store.peekStatus().persistent
+  return !store.hasMemoryOnlyPhotos()
 }

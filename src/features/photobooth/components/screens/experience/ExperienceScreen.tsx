@@ -21,6 +21,7 @@ import { createSession, getCapturedCount } from '@/src/features/photobooth/domai
 import { collectGarbage, endSession } from '@/src/features/photobooth/services/storage/photoStore'
 import { claimSession, releaseSession } from '@/src/features/photobooth/services/storage/sessionOwnership'
 import {
+  clearStoredSession,
   consumeSessionNotice,
   readStoredSession,
   setSessionNotice,
@@ -44,15 +45,32 @@ export default function ExperienceScreen() {
   const [isStarting, setIsStarting] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
     const { session, discarded } = readStoredSession()
-    if (session) {
-      setSelectedId(session.experienceId)
-      if (getCapturedCount(session) > 0) setResumeRoute(getResumeRoute(session))
-    }
     const pending = consumeSessionNotice() ?? (discarded ? 'session-reset' : null)
     if (pending) setNotice(SESSION_NOTICE_COPY[pending])
-    // Removes photos of sessions that were ended or abandoned in closed tabs.
-    void collectGarbage(session ? [session.id] : [])
+
+    if (!session) {
+      // Removes photos of sessions that were ended or abandoned in closed tabs.
+      void collectGarbage([])
+      return
+    }
+    setSelectedId(session.experienceId)
+    // A duplicated tab must neither resume nor end the session another tab owns.
+    void claimSession(session.id).then((owned) => {
+      if (cancelled) return
+      if (!owned) {
+        clearStoredSession()
+        setNotice(SESSION_NOTICE_COPY['duplicate-tab'])
+        void collectGarbage([])
+        return
+      }
+      if (getCapturedCount(session) > 0) setResumeRoute(getResumeRoute(session))
+      void collectGarbage([session.id])
+    })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   async function handleContinue() {
@@ -76,7 +94,8 @@ export default function ExperienceScreen() {
     }
 
     // The new session is saved first, so a failed cleanup can never leave this tab without one.
-    if (previous) {
+    // Only a session this tab owns is ended; a copy from a duplicated tab is simply dropped.
+    if (previous && (await claimSession(previous.id))) {
       const { complete } = await endSession(previous.id).catch(() => ({ complete: false }))
       releaseSession(previous.id)
       if (getCapturedCount(previous) > 0 || !complete) setSessionNotice(complete ? 'session-ended' : 'cleanup-incomplete')
@@ -166,7 +185,7 @@ export default function ExperienceScreen() {
         <p role={error ? 'alert' : undefined} className={`text-[13px] ${error ? 'text-danger' : 'text-ink-soft'}`} aria-live="polite">
           {error ??
             (isConfirmingRestart
-              ? 'Ảnh của phiên đang dở sẽ bị xóa khỏi máy. Bấm lần nữa để bắt đầu lại.'
+              ? 'Ảnh của phiên đang dở sẽ bị xóa khỏi bộ nhớ trình duyệt. Bấm lần nữa để bắt đầu lại.'
               : resumeRoute
                 ? 'Bạn còn một phiên chụp đang dở.'
                 : getExperience(selectedId).description)}
