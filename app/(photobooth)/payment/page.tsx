@@ -6,7 +6,6 @@ import Image from 'next/image'
 import PhotoboothScreenShell from '@/src/features/photobooth/components/shared/layout/ScreenShell'
 import PhotoboothPageHeader from '@/src/features/photobooth/components/shared/layout/PageHeader'
 import PhotoboothPageBody from '@/src/features/photobooth/components/shared/layout/PageBody'
-import PhotoboothFooter from '@/src/features/photobooth/components/shared/layout/Footer'
 import PrimaryButton from '@/src/features/photobooth/components/shared/controls/PrimaryButton'
 import { PHOTOBOOTH_PACKAGE_OPTIONS } from '@/src/features/photobooth/constants/packages'
 import {
@@ -102,7 +101,7 @@ export default function PaymentPage() {
   }
 
   return (
-    <PhotoboothScreenShell backgroundVariant="museum">
+    <PhotoboothScreenShell backgroundVariant="soft">
       <div className="relative flex h-[100svh] max-h-full min-h-0 flex-col">
         <div
           className={[
@@ -215,7 +214,7 @@ export default function PaymentPage() {
             </div>
           </div>
 
-          <div className="flex w-full justify-center pb-0 pt-4">
+          <div className="flex w-full justify-center pt-4 pb-[calc(clamp(18px,3svh,34px)+env(safe-area-inset-bottom))]">
             <PrimaryButton
               onClick={handleMockPaymentComplete}
               disabled={isPaymentSuccess}
@@ -226,8 +225,6 @@ export default function PaymentPage() {
             </PrimaryButton>
           </div>
         </PhotoboothPageBody>
-
-        <PhotoboothFooter className="shrink-0" />
       </div>
     </PhotoboothScreenShell>
   )

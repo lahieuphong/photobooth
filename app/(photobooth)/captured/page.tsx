@@ -211,46 +211,6 @@ function getExportSlots(
   })
 }
 
-async function drawGrid6RowGapCovers(
-  context: CanvasRenderingContext2D,
-  photoSrcs: Array<string | null>,
-  slots: ExportPhotoSlot[],
-  canvasWidth: number
-) {
-  const scale = canvasWidth / 1200
-  const coverHeight = 36 * scale
-  const coverBands = [
-    { y: 518 * scale, slotIndexes: [0, 1] },
-    { y: 984 * scale, slotIndexes: [2, 3] },
-  ]
-
-  await Promise.all(
-    coverBands.flatMap(({ y, slotIndexes }) =>
-      slotIndexes.map(async (slotIndex) => {
-        const photoSrc = photoSrcs[slotIndex]
-        const slot = slots[slotIndex]
-        if (!photoSrc || !slot) return
-
-        const image = await loadExportImage(photoSrc)
-        context.save()
-        context.beginPath()
-        context.rect(slot.x, y, slot.width, coverHeight)
-        context.clip()
-        drawCoverImage(
-          context,
-          image,
-          slot.x,
-          slot.y,
-          slot.width,
-          slot.height,
-          slot.scale
-        )
-        context.restore()
-      })
-    )
-  )
-}
-
 export default function CapturedPage() {
   const screen = PHOTOBOOTH_SCREEN_STATE_MAP.captured
 
@@ -348,17 +308,13 @@ export default function CapturedPage() {
 
     context.drawImage(overlay, 0, 0, canvas.width, overlayHeight)
 
-    if (mode === 'grid-6') {
-      await drawGrid6RowGapCovers(context, photoSrcs, slots, canvas.width)
-    }
-
     canvas.toBlob((blob) => {
       if (!blob) return
 
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `btmt-photobooth-hinh-${currentImageIndex + 1}.png`
+      link.download = `photobooth-hinh-${currentImageIndex + 1}.png`
       document.body.appendChild(link)
       link.click()
       link.remove()

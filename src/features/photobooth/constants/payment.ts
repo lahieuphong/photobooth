@@ -6,7 +6,7 @@ export type PhotoboothBankQrConfig = {
 }
 
 export const PHOTOBOOTH_PAYMENT_QR_EXPIRED_IN_SECONDS = 120
-export const PHOTOBOOTH_PAYMENT_QR_TEXT = 'BTMT-PHOTOBOOTH-ORDER-001'
+export const PHOTOBOOTH_PAYMENT_QR_TEXT = 'PHOTOBOOTH-ORDER-001'
 
 export const PHOTOBOOTH_PAYMENT_BANK_ACCOUNT: PhotoboothBankQrConfig = {
   bankCode: 'MB',

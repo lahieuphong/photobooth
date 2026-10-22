@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'BTMT Photobooth',
-  description: 'Photobooth trải nghiệm chụp ảnh tại Bảo tàng Mỹ thuật Thành phố Hồ Chí Minh',
+  title: 'Photobooth',
+  description: 'Photobooth chụp ảnh lấy liền với nhiều bố cục, bộ lọc và khung ảnh',
   manifest: getAssetPath('/manifest.webmanifest'),
   icons: {
     icon: [
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'BTMT Photobooth',
+    title: 'Photobooth',
   },
 }
 

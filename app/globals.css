@@ -154,13 +154,7 @@ a {
   }
 
   .welcome-main-screen .welcome-main-logo {
-    width: clamp(50px, 12vw, 70px);
-  }
-
-  .welcome-main-screen .welcome-main-subtitle {
-    margin-top: clamp(6px, 1vh, 10px);
-    font-size: clamp(10px, 1.9vw, 16px);
-    line-height: 1.2;
+    width: clamp(46px, 11vw, 64px);
   }
 
   .welcome-main-screen .welcome-main-title {
@@ -197,10 +191,6 @@ a {
 @media (max-height: 670px) {
   .welcome-main-screen .welcome-main-header {
     padding-top: calc(env(safe-area-inset-top) + 6px);
-  }
-
-  .welcome-main-screen .welcome-main-content {
-    padding-bottom: 0;
   }
 
   .welcome-main-screen .welcome-main-title {

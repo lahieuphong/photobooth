@@ -73,7 +73,7 @@ export default function WelcomeLoadingScreen({
 
   const progressFillStyle: CSSProperties = {
     width: `${progress}%`,
-    background: '#7E1F15',
+    background: '#FF5A2A',
   }
 
   return (
@@ -84,16 +84,23 @@ export default function WelcomeLoadingScreen({
       aria-live="polite"
     >
       <div className="flex w-[min(84vw,420px)] flex-col items-center gap-6 px-6">
-        <div className="w-[150px]">
-          <Image
-            src={getAssetPath('/images/logos/logo.svg')}
-            alt="BTMT Photobooth"
-            width={150}
-            height={150}
-            priority
-            className="h-auto w-full"
-            style={{ width: '100%', height: 'auto' }}
-          />
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-[88px]">
+            <Image
+              src={getAssetPath('/images/logos/photobooth-mark.svg')}
+              alt=""
+              aria-hidden="true"
+              width={88}
+              height={88}
+              priority
+              className="h-auto w-full"
+              style={{ width: '100%', height: 'auto' }}
+            />
+          </div>
+
+          <p className="font-serif text-[28px] font-medium uppercase leading-none tracking-[0.04em] text-[#1F2024]">
+            Photobooth
+          </p>
         </div>
 
         <div className="relative h-[6px] w-full rounded-full bg-[#E6E6E6]" aria-hidden="true">

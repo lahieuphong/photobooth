@@ -5,7 +5,6 @@ import { useState } from 'react'
 import PhotoboothScreenShell from '@/src/features/photobooth/components/shared/layout/ScreenShell'
 import PhotoboothPageHeader from '@/src/features/photobooth/components/shared/layout/PageHeader'
 import PhotoboothPageBody from '@/src/features/photobooth/components/shared/layout/PageBody'
-import PhotoboothFooter from '@/src/features/photobooth/components/shared/layout/Footer'
 import PackageCard from '@/src/features/photobooth/components/screens/packages/PackageCard'
 import PrimaryButton from '@/src/features/photobooth/components/shared/controls/PrimaryButton'
 import { PHOTOBOOTH_DEFAULT_SESSION } from '@/src/features/photobooth/constants/session'
@@ -27,7 +26,7 @@ export default function PackagesPage() {
   }
 
   return (
-    <PhotoboothScreenShell backgroundVariant="museum">
+    <PhotoboothScreenShell backgroundVariant="soft">
       <div className="flex h-[100svh] max-h-full min-h-0 flex-col">
         <PhotoboothPageHeader
           title={screen.title}
@@ -53,14 +52,12 @@ export default function PackagesPage() {
             </div>
           </div>
 
-          <div className="flex justify-center pb-0 pt-4">
+          <div className="flex justify-center pt-4 pb-[calc(clamp(18px,3svh,34px)+env(safe-area-inset-bottom))]">
             <PrimaryButton onClick={handleConfirmPackage} className="min-w-[142px]">
               {screen.primaryActionLabel}
             </PrimaryButton>
           </div>
         </PhotoboothPageBody>
-
-        <PhotoboothFooter />
       </div>
     </PhotoboothScreenShell>
   )

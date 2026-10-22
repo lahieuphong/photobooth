@@ -70,11 +70,6 @@ export const PHOTOBOOTH_BACKGROUND_OPTIONS: PhotoboothBackgroundOption[] = [
     previewClassName: 'bg-[linear-gradient(135deg,#D9C19A,#B28A57)]',
   },
   {
-    id: 'museum',
-    name: 'Bảo tàng',
-    previewClassName: 'bg-[linear-gradient(135deg,#87C8FF,#E8E0D5)]',
-  },
-  {
     id: 'city',
     name: 'Đô thị',
     previewClassName: 'bg-[linear-gradient(135deg,#8FA0C6,#D5D9E5)]',

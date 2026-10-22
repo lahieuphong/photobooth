@@ -2,9 +2,9 @@ import Image from 'next/image'
 import { getAssetPath } from '@/src/features/photobooth/utils/assetPath'
 
 const CUSTOMIZE_LAYOUT_PREVIEW_IMAGES: Record<string, string> = {
-  'layout-grid-4': '/images/layouts/photo-grid-2x2.svg',
-  'layout-vertical-4': '/images/layouts/photo-stack-4.svg',
-  'layout-grid-6': '/images/layouts/photo-grid-2x3.svg',
+  'layout-grid-4': '/images/layouts/preview-grid-2x2.svg',
+  'layout-vertical-4': '/images/layouts/preview-stack-4.svg',
+  'layout-grid-6': '/images/layouts/preview-grid-2x3.svg',
 }
 
 function getCustomizePreviewImage(selectedLayoutId: string) {

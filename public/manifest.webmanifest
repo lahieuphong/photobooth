@@ -1,7 +1,7 @@
 {
-  "name": "BTMT Photobooth",
-  "short_name": "BTMT Booth",
-  "description": "Photobooth trải nghiệm chụp ảnh tại Bảo tàng Mỹ thuật Thành phố Hồ Chí Minh",
+  "name": "Photobooth",
+  "short_name": "Photobooth",
+  "description": "Photobooth chụp ảnh lấy liền với nhiều bố cục, bộ lọc và khung ảnh",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

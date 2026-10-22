@@ -1,5 +1,4 @@
 import PhotoboothScreenShell from '@/src/features/photobooth/components/shared/layout/ScreenShell'
-import PhotoboothFooter from '@/src/features/photobooth/components/shared/layout/Footer'
 import HeaderControls from '@/src/features/photobooth/components/shared/layout/HeaderControls'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -9,10 +8,10 @@ import { getAssetPath } from '@/src/features/photobooth/utils/assetPath'
 export default function WelcomeMainScreen() {
   const screen = PHOTOBOOTH_SCREEN_STATE_MAP.welcome
   const welcomeImagePreloads = [
-    '/images/backgrounds/optimized/bg_removal.svg',
-    '/images/layouts/optimized/photo-grid-2x2.svg',
-    '/images/layouts/optimized/photo-stack-4.svg',
-    '/images/layouts/optimized/photo-grid-2x3.svg',
+    '/images/logos/photobooth-mark.svg',
+    '/images/layouts/preview-grid-2x2.svg',
+    '/images/layouts/preview-stack-4.svg',
+    '/images/layouts/preview-grid-2x3.svg',
   ]
 
   return (
@@ -27,7 +26,7 @@ export default function WelcomeMainScreen() {
         />
       ))}
 
-      <PhotoboothScreenShell backgroundVariant="museum">
+      <PhotoboothScreenShell backgroundVariant="soft">
         <div className="welcome-main-screen relative flex h-[100svh] max-h-full min-h-0 flex-col">
           <div
             className="welcome-main-header w-full shrink-0 px-[3.704%] pt-[calc(env(safe-area-inset-top)+clamp(8px,1.8vh,24px))]"
@@ -40,24 +39,19 @@ export default function WelcomeMainScreen() {
             />
           </div>
 
-          <div className="welcome-main-content relative z-20 flex min-h-0 flex-1 flex-col items-center px-[8%] pb-0 pt-[clamp(8px,2.1vh,24px)] text-center">
-            <div className="welcome-main-logo w-[clamp(58px,16vw,84px)]">
+          <div className="welcome-main-content relative z-20 flex min-h-0 flex-1 flex-col items-center px-[8%] pb-[max(env(safe-area-inset-bottom),clamp(8px,2vh,20px))] pt-[clamp(8px,2.1vh,24px)] text-center">
+            <div className="welcome-main-logo w-[clamp(52px,14vw,76px)]">
               <Image
-                src={getAssetPath('/images/logos/logo.svg')}
-                alt="Bảo tàng Mỹ thuật Thành phố Hồ Chí Minh"
-                width={84}
-                height={84}
+                src={getAssetPath('/images/logos/photobooth-mark.svg')}
+                alt=""
+                aria-hidden="true"
+                width={76}
+                height={76}
                 priority
-                className="h-auto w-full"
+                className="h-auto w-full drop-shadow-[0_6px_14px_rgba(255,90,42,0.24)]"
                 style={{ width: '100%', height: 'auto' }}
               />
             </div>
-
-            <p className="welcome-main-subtitle mt-[clamp(8px,1.5vh,12px)] font-serif text-[clamp(10px,2.2vw,20px)] font-semibold uppercase leading-[1.3] tracking-[0.03em] text-[#9A2D1E]">
-              Bảo Tàng Mỹ Thuật
-              <br />
-              Thành Phố Hồ Chí Minh
-            </p>
 
             <h1 className="welcome-main-title mt-[clamp(10px,2.2vh,24px)] font-serif text-[clamp(34px,10.4vw,70px)] font-medium uppercase leading-none tracking-[0.015em] text-[#1F2024]">
               Photobooth
@@ -88,10 +82,10 @@ export default function WelcomeMainScreen() {
               <div className="relative mx-auto aspect-[16/6.8] w-full">
                 <div className="absolute bottom-[0] left-[2%] z-10 w-[50%]">
                   <Image
-                    src={getAssetPath('/images/layouts/optimized/photo-grid-2x2.svg')}
+                    src={getAssetPath('/images/layouts/preview-grid-2x2.svg')}
                     alt=""
-                    width={620}
-                    height={930}
+                    width={344}
+                    height={418}
                     priority
                     sizes="(max-width: 768px) 46vw, 420px"
                     className="h-auto w-full drop-shadow-[0_12px_20px_rgba(0,0,0,0.22)]"
@@ -100,10 +94,10 @@ export default function WelcomeMainScreen() {
 
                 <div className="absolute bottom-[0] left-[32%] z-20 w-[50%]">
                   <Image
-                    src={getAssetPath('/images/layouts/optimized/photo-stack-4.svg')}
+                    src={getAssetPath('/images/layouts/preview-stack-4.svg')}
                     alt=""
-                    width={620}
-                    height={930}
+                    width={320}
+                    height={403}
                     priority
                     sizes="(max-width: 768px) 46vw, 420px"
                     className="h-auto w-full drop-shadow-[0_12px_20px_rgba(0,0,0,0.22)]"
@@ -112,10 +106,10 @@ export default function WelcomeMainScreen() {
 
                 <div className="absolute bottom-[0] left-[52%] z-30 w-[50%]">
                   <Image
-                    src={getAssetPath('/images/layouts/optimized/photo-grid-2x3.svg')}
+                    src={getAssetPath('/images/layouts/preview-grid-2x3.svg')}
                     alt=""
-                    width={500}
-                    height={750}
+                    width={360}
+                    height={439}
                     priority
                     sizes="(max-width: 768px) 46vw, 420px"
                     className="h-auto w-full drop-shadow-[0_12px_20px_rgba(0,0,0,0.2)]"
@@ -124,8 +118,6 @@ export default function WelcomeMainScreen() {
               </div>
             </div>
           </div>
-
-          <PhotoboothFooter className="welcome-main-footer relative z-30 shrink-0" />
         </div>
       </PhotoboothScreenShell>
     </>

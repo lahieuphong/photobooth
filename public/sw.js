@@ -1,12 +1,15 @@
-const STATIC_CACHE = 'btmt-photobooth-static-v2'
+const STATIC_CACHE = 'photobooth-static-v3'
+
+// Caches created by this app, including the pre-rebrand name, so activation can
+// drop stale artwork without touching other caches on the same github.io origin.
+const OWN_CACHE_PREFIXES = ['photobooth-static-', 'btmt-photobooth-static-']
 
 const PRECACHE_ASSETS = [
-  'images/backgrounds/optimized/bg_removal.svg',
   'images/illustrations/camera.svg',
-  'images/layouts/optimized/photo-grid-2x2.svg',
-  'images/layouts/optimized/photo-stack-4.svg',
-  'images/layouts/optimized/photo-grid-2x3.svg',
-  'images/logos/logo.svg',
+  'images/layouts/preview-grid-2x2.svg',
+  'images/layouts/preview-stack-4.svg',
+  'images/layouts/preview-grid-2x3.svg',
+  'images/logos/photobooth-mark.svg',
 ]
 
 function getScopedAssetUrl(path) {
@@ -33,7 +36,11 @@ self.addEventListener('activate', (event) => {
       .then((cacheNames) =>
         Promise.all(
           cacheNames
-            .filter((cacheName) => cacheName !== STATIC_CACHE)
+            .filter(
+              (cacheName) =>
+                cacheName !== STATIC_CACHE &&
+                OWN_CACHE_PREFIXES.some((prefix) => cacheName.startsWith(prefix)),
+            )
             .map((cacheName) => caches.delete(cacheName)),
         ),
       )

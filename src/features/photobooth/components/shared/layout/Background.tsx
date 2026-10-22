@@ -1,37 +1,21 @@
-import Image from 'next/image'
 import type { ReactNode } from 'react'
-import { getAssetPath } from '@/src/features/photobooth/utils/assetPath'
 
-export type PhotoboothBackgroundVariant = 'plain' | 'museum'
+export type PhotoboothBackgroundVariant = 'plain' | 'soft'
 
 type PhotoboothBackgroundProps = {
   children?: ReactNode
-  backgroundImage?: string
   variant?: PhotoboothBackgroundVariant
 }
 
-const DEFAULT_MUSEUM_BACKGROUND_SRC = '/images/backgrounds/optimized/bg_removal.svg'
+const SOFT_BACKGROUND_CLASS_NAME =
+  'bg-[radial-gradient(120%_55%_at_50%_0%,#FFE7D6_0%,rgba(255,231,214,0)_72%),linear-gradient(180deg,#FFFFFF_40%,#FFF5EC_100%)]'
 
-function MuseumBackground({
-  children,
-  backgroundImage,
-}: {
-  children?: ReactNode
-  backgroundImage?: string
-}) {
-  const resolvedBackgroundImage =
-    backgroundImage || DEFAULT_MUSEUM_BACKGROUND_SRC
-
+function SoftBackground({ children }: { children?: ReactNode }) {
   return (
     <div className="relative h-full w-full overflow-hidden bg-white isolate">
-      <Image
-        src={getAssetPath(resolvedBackgroundImage)}
-        alt=""
-        fill
+      <div
         aria-hidden="true"
-        priority
-        sizes="100vw"
-        className="pointer-events-none absolute inset-0 z-0 select-none object-cover"
+        className={`pointer-events-none absolute inset-0 z-0 ${SOFT_BACKGROUND_CLASS_NAME}`}
       />
 
       <div className="relative z-10 h-full w-full">{children}</div>
@@ -49,15 +33,10 @@ function PlainBackground({ children }: { children?: ReactNode }) {
 
 export default function PhotoboothBackground({
   children,
-  backgroundImage,
   variant = 'plain',
 }: PhotoboothBackgroundProps) {
-  if (variant === 'museum') {
-    return (
-      <MuseumBackground backgroundImage={backgroundImage}>
-        {children}
-      </MuseumBackground>
-    )
+  if (variant === 'soft') {
+    return <SoftBackground>{children}</SoftBackground>
   }
 
   return <PlainBackground>{children}</PlainBackground>
