@@ -315,7 +315,8 @@ describe('photo store: degraded storage', () => {
     const id = await tab.savePhoto('mine', photo())
     assert.equal(await exists(tab, 'old:1'), false)
     assert.equal(await exists(tab, id), true)
-    assert.deepEqual(await tab.getStatus(), { persistent: true, reason: 'ok' })
+    assert.deepEqual(await tab.getStatus(), { backend: 'available' })
+    assert.deepEqual(tab.getMemoryOnlyPhotos([id]), [])
   })
 
   test('still full: the photo is kept in memory and the store reports it', async () => {
@@ -328,15 +329,18 @@ describe('photo store: degraded storage', () => {
 
     const id = await tab.savePhoto('mine', photo())
     assert.equal(await exists(tab, id), true)
-    assert.deepEqual(await tab.getStatus(), { persistent: false, reason: 'quota' })
+    assert.deepEqual(tab.getMemoryOnlyPhotos([id]), [{ id, reason: 'quota' }])
+    // The backend itself still works; only this photo could not be persisted.
+    assert.deepEqual(await tab.getStatus(), { backend: 'available' })
   })
 
   test('without IndexedDB everything stays in memory and is reported', async () => {
     const store = createPhotoStore({ openPersistent: async () => ({ backend: null, reason: 'unsupported' }) })
-    assert.deepEqual(await store.getStatus(), { persistent: false, reason: 'unavailable' })
+    assert.deepEqual(await store.getStatus(), { backend: 'unavailable' })
 
     const id = await store.savePhoto('s', photo())
     assert.equal(await exists(store as ReturnType<typeof createTab>, id), true)
+    assert.deepEqual(store.getMemoryOnlyPhotos([id]), [{ id, reason: 'unavailable' }])
     assert.deepEqual(await store.endSession('s'), { complete: true })
     assert.deepEqual(await store.loadPhoto(id), { status: 'missing' })
   })
@@ -362,12 +366,12 @@ describe('photo store: degraded storage', () => {
     const store = createPhotoStore({
       openPersistent: async () => (available ? { backend } : { backend: null, reason: 'error' }),
     })
-    assert.deepEqual(await store.getStatus(), { persistent: false, reason: 'error' })
+    assert.deepEqual(await store.getStatus(), { backend: 'error' })
 
     available = true
-    assert.deepEqual(await store.getStatus(), { persistent: true, reason: 'ok' })
-    await store.savePhoto('s', photo())
-    assert.equal(store.hasMemoryOnlyPhotos(), false)
+    assert.deepEqual(await store.getStatus(), { backend: 'available' })
+    const id = await store.savePhoto('s', photo())
+    assert.deepEqual(store.getMemoryOnlyPhotos([id]), [])
   })
 
   test('unreadable storage is reported as an error, never as a missing photo', async () => {
@@ -382,5 +386,96 @@ describe('photo store: degraded storage', () => {
 
     const cannotOpen = createPhotoStore({ openPersistent: async () => ({ backend: null, reason: 'error' }) })
     assert.deepEqual(await cannotOpen.loadPhoto('p'), { status: 'error' })
+  })
+})
+
+describe('photo store: memory-only tracking', () => {
+  /** IndexedDB that can be switched off and on, like a broken connection that recovers. */
+  function switchableStore() {
+    const { backend } = createSharedBackend()
+    const state = { available: false }
+    // Down means: it cannot be opened, and an open connection fails its writes.
+    const switchable: PhotoBackend = {
+      ...backend,
+      async putPhoto(stored) {
+        if (!state.available) throw new Error('IDB_ABORTED')
+        return backend.putPhoto(stored)
+      },
+    }
+    const store = createPhotoStore({
+      openPersistent: async () => (state.available ? { backend: switchable } : { backend: null, reason: 'error' }),
+    })
+    return { store, state }
+  }
+
+  test('mixed storage: one memory photo keeps the whole session reload-unsafe', async () => {
+    const { store, state } = switchableStore()
+    state.available = true
+    const first = await store.savePhoto('s', photo())
+    state.available = false
+    const second = await store.savePhoto('s', photo())
+    state.available = true
+    const third = await store.savePhoto('s', photo())
+
+    assert.deepEqual(store.getMemoryOnlyPhotos([first, second, third]), [{ id: second, reason: 'error' }])
+    // The last save succeeded, but that does not make the session safe.
+    assert.deepEqual(await store.getStatus(), { backend: 'available' })
+  })
+
+  test('deleting the only memory photo clears the warning', async () => {
+    const { store } = switchableStore()
+    const id = await store.savePhoto('s', photo())
+    assert.equal(store.getMemoryOnlyPhotos([id]).length, 1)
+
+    await store.deletePhotos([id])
+    assert.deepEqual(store.getMemoryOnlyPhotos([id]), [])
+  })
+
+  test('a new session never inherits the previous session\'s memory-only warning', async () => {
+    const { store, state } = switchableStore()
+    const old = await store.savePhoto('old', photo())
+    await store.endSession('old')
+
+    state.available = true
+    const fresh = await store.savePhoto('new', photo())
+    assert.deepEqual(store.getMemoryOnlyPhotos([fresh]), [])
+    assert.deepEqual(store.getMemoryOnlyPhotos([old]), [], 'ended photos are gone, not just hidden')
+  })
+
+  test('retake with memory photos: cancel drops the draft, commit drops the replaced original', async () => {
+    const { store } = switchableStore()
+    const original = await store.savePhoto('s', photo())
+    const draft = await store.savePhoto('s', photo())
+
+    await store.deletePhotos([draft])
+    assert.deepEqual(store.getMemoryOnlyPhotos([original, draft]).map((item) => item.id), [original])
+
+    const replacement = await store.savePhoto('s', photo())
+    await store.deletePhotos([original])
+    assert.deepEqual(store.getMemoryOnlyPhotos([original, replacement]).map((item) => item.id), [replacement])
+  })
+
+  test('garbage collection of an abandoned memory session clears its photos', async () => {
+    const clock = { now: 0 }
+    const store = createPhotoStore({
+      openPersistent: async () => ({ backend: null, reason: 'unsupported' }),
+      now: () => clock.now,
+      orphanCutoffMs: () => CUTOFF,
+    })
+    const id = await store.savePhoto('gone', photo())
+    clock.now = CUTOFF + 1
+    await store.collectGarbage(['current'])
+    assert.deepEqual(store.getMemoryOnlyPhotos([id]), [])
+    assert.deepEqual(await store.loadPhoto(id), { status: 'missing' })
+  })
+
+  test('recovering storage persists new photos while old memory photos stay flagged', async () => {
+    const { store, state } = switchableStore()
+    const memoryPhoto = await store.savePhoto('s', photo())
+    state.available = true
+    const persisted = await store.savePhoto('s', photo())
+
+    assert.deepEqual(store.getMemoryOnlyPhotos([memoryPhoto, persisted]).map((item) => item.id), [memoryPhoto])
+    assert.equal((await store.loadPhoto(memoryPhoto)).status, 'found', 'nothing is silently dropped')
   })
 })

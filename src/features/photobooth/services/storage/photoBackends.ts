@@ -45,11 +45,17 @@ function touchedRecord(record: SessionRecord | undefined, sessionId: string, now
     : { id: sessionId, lastActiveAt: now, endedAt: null }
 }
 
-export function createMemoryBackend(): PhotoBackend {
+/** Memory is also the record of which photos are reload-unsafe, so it answers synchronously. */
+export type MemoryBackend = PhotoBackend & { hasPhoto(id: string): boolean }
+
+export function createMemoryBackend(): MemoryBackend {
   const photos = new Map<string, StoredPhoto>()
   const sessions = new Map<string, SessionRecord>()
 
   return {
+    hasPhoto(id) {
+      return photos.has(id)
+    },
     async putPhoto(photo) {
       photos.set(photo.id, photo)
       sessions.set(photo.sessionId, touchedRecord(sessions.get(photo.sessionId), photo.sessionId, photo.createdAt))

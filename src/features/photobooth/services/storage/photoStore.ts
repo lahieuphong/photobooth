@@ -1,4 +1,5 @@
 import { getOrphanCutoffMs } from '@/src/features/photobooth/config/kiosk'
+import { listLiveSessionIds } from './sessionOwnership'
 import {
   createMemoryBackend,
   openIndexedDbBackend,
@@ -18,20 +19,25 @@ import {
 //   1. Photos a session transition drops (replaced retake, cancelled draft) are
 //      deleted by id — see deletePhotos().
 //   2. Ending a session (reset, kiosk expiry) deletes every photo it owns.
-//   3. Garbage collection only removes sessions that were ended or whose
-//      record has not been touched for the orphan cutoff. Each tab's live
-//      session touches its record, so other tabs are never collected. An
-//      ended session keeps a tombstone record for the cutoff, so a photo that
-//      lands late is still collected instead of reviving the session.
+//   3. Garbage collection only removes sessions that were ended, or abandoned:
+//      no tab holds them (Web Lock) and their heartbeat is older than the
+//      cutoff. An owning tab refreshes its heartbeat periodically, but a
+//      frozen background tab cannot, which is why a held lock always wins.
+//      An ended session keeps a tombstone record for the cutoff, so a photo
+//      that lands late is still collected instead of reviving the session.
 // Every mutation runs through one queue, so cleanups in this tab never overlap.
 
-export type PhotoStoreStatus = {
-  /** False when photos saved now (or already) would not survive a full page reload. */
-  persistent: boolean
-  reason: 'ok' | 'unavailable' | 'quota' | 'error'
-}
+/**
+ * Whether a photo saved right now can be persisted. A fresh probe each time,
+ * never latched: storage that recovers is used again.
+ */
+export type PhotoStoreStatus = { backend: 'available' | 'unavailable' | 'error' }
 
-type FallbackReason = Exclude<PhotoStoreStatus['reason'], 'ok'>
+/** Why a photo had to be kept in memory. */
+export type FallbackReason = 'unavailable' | 'quota' | 'error'
+
+/** A photo that lives only in this tab's memory: a full page reload loses it. */
+export type MemoryOnlyPhoto = { id: string; reason: FallbackReason }
 
 type OpenResult = { backend: PhotoBackend } | { backend: null; reason: 'unsupported' | 'error' }
 
@@ -46,6 +52,8 @@ type PhotoStoreOptions = {
   now?: () => number
   /** Sessions untouched for longer than this are abandoned (closed tab, crashed kiosk). */
   orphanCutoffMs?: () => number
+  /** Sessions a tab currently holds; they are never treated as abandoned. */
+  getLiveSessionIds?: () => Promise<Set<string>>
 }
 
 /** Heartbeats closer together than this are skipped; the record only needs coarse liveness. */
@@ -63,11 +71,16 @@ export function isQuotaError(error: unknown) {
   return typeof error === 'object' && error !== null && 'name' in error && error.name === 'QuotaExceededError'
 }
 
-export function createPhotoStore({ openPersistent, now = Date.now, orphanCutoffMs = () => 24 * 60 * 60 * 1000 }: PhotoStoreOptions) {
+export function createPhotoStore({
+  openPersistent,
+  now = Date.now,
+  orphanCutoffMs = () => 24 * 60 * 60 * 1000,
+  getLiveSessionIds = async () => new Set(),
+}: PhotoStoreOptions) {
   const memory = createMemoryBackend()
   let opened: Promise<OpenResult> | null = null
-  /** Set once a photo really had to be kept in memory: from then on a reload loses data. */
-  let memoryFallback: FallbackReason | null = null
+  /** Why each memory photo is there; the memory backend itself is the source of truth for presence. */
+  const fallbackReasons = new Map<string, FallbackReason>()
   let tail: Promise<unknown> = Promise.resolve()
   let gcRequest: { protectedIds: Set<string>; done: Promise<void> } | null = null
   const lastTouchAt = new Map<string, number>()
@@ -103,9 +116,12 @@ export function createPhotoStore({ openPersistent, now = Date.now, orphanCutoffM
 
   async function collectNow(protectedIds: Set<string>) {
     const cutoff = now() - orphanCutoffMs()
+    const live = await getLiveSessionIds().catch(() => new Set<string>())
     const decide: CollectDecision = (record) => {
       if (!record || protectedIds.has(record.id)) return null
+      // Ended is final: even a tab still holding the lock has let go of the photos.
       if (record.endedAt !== null) return { keepRecord: record.endedAt >= cutoff }
+      if (live.has(record.id)) return null
       return record.lastActiveAt < cutoff ? { keepRecord: false } : null
     }
 
@@ -113,13 +129,17 @@ export function createPhotoStore({ openPersistent, now = Date.now, orphanCutoffM
       try {
         const records = await backend.listSessions()
         const known = new Set(records.map((record) => record.id))
+        const withPhotos = new Set(await backend.listPhotoSessionIds())
         // Photos whose session has no record (written by a build without records):
         // start their grace period now instead of guessing they are abandoned.
-        for (const sessionId of await backend.listPhotoSessionIds()) {
+        for (const sessionId of withPhotos) {
           if (!known.has(sessionId)) await backend.touchSession(sessionId, now())
         }
         for (const record of records) {
-          if (decide(record)) await backend.collectSession(record.id, decide)
+          const decision = decide(record)
+          // A tombstone with nothing left to delete costs a write transaction for nothing.
+          if (!decision || (decision.keepRecord && !withPhotos.has(record.id))) continue
+          await backend.collectSession(record.id, decide)
         }
       } catch {
         // Best effort: whatever was not collected now is collected on a later run.
@@ -163,7 +183,7 @@ export function createPhotoStore({ openPersistent, now = Date.now, orphanCutoffM
           return photo.id
         }
         await memory.putPhoto(photo)
-        memoryFallback ??= failure
+        fallbackReasons.set(photo.id, failure)
         return photo.id
       })
     },
@@ -265,21 +285,33 @@ export function createPhotoStore({ openPersistent, now = Date.now, orphanCutoffM
      * failed open is not remembered: the next probe tries again.
      */
     async getStatus(): Promise<PhotoStoreStatus> {
-      if (memoryFallback) return { persistent: false, reason: memoryFallback }
-      const reason = fallbackReason(await getPersistent())
-      return reason ? { persistent: false, reason } : { persistent: true, reason: 'ok' }
+      const result = await getPersistent()
+      return { backend: result.backend ? 'available' : result.reason === 'unsupported' ? 'unavailable' : 'error' }
     },
 
-    /** Whether any photo of this page lives only in memory (a reload would lose it). */
-    hasMemoryOnlyPhotos(): boolean {
-      return memoryFallback !== null
+    /**
+     * Which of `ids` (typically the current session's photos) live only in
+     * memory. Answers from the memory store itself, so deleted, replaced or
+     * ended photos stop counting at once and a new session starts clean.
+     */
+    getMemoryOnlyPhotos(ids: Iterable<string>): MemoryOnlyPhoto[] {
+      for (const id of fallbackReasons.keys()) {
+        if (!memory.hasPhoto(id)) fallbackReasons.delete(id)
+      }
+      return [...new Set(ids)]
+        .filter((id) => memory.hasPhoto(id))
+        .map((id) => ({ id, reason: fallbackReasons.get(id) ?? 'error' }))
     },
   }
 }
 
 export type PhotoStore = ReturnType<typeof createPhotoStore>
 
-const store = createPhotoStore({ openPersistent: openIndexedDbBackend, orphanCutoffMs: getOrphanCutoffMs })
+const store = createPhotoStore({
+  openPersistent: openIndexedDbBackend,
+  orphanCutoffMs: getOrphanCutoffMs,
+  getLiveSessionIds: listLiveSessionIds,
+})
 
 export const savePhoto = store.savePhoto
 export const loadPhotoResult = store.loadPhoto
@@ -295,7 +327,4 @@ export const endSession = store.endSession
 export const collectGarbage = store.collectGarbage
 export const getPhotoStoreStatus = store.getStatus
 
-/** Whether every photo saved so far survives a full page reload. */
-export function isPhotoStorePersistent() {
-  return !store.hasMemoryOnlyPhotos()
-}
+export const getMemoryOnlyPhotos = store.getMemoryOnlyPhotos

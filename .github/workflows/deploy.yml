@@ -8,10 +8,9 @@ on:
     branches: ['main']
   workflow_dispatch:
 
+# Least privilege by default; only the deploy job can publish to Pages.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   # Deploys share one group and queue up, so a new push never cancels a deploy midway.
@@ -22,6 +21,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # actions/configure-pages reads the Pages configuration (base path).
+      pages: read
 
     steps:
       - name: Checkout
@@ -67,6 +70,26 @@ jobs:
           test -f out/sw.js && test -f out/manifest.webmanifest
           grep -q "$BASE_PATH/_next/static/" out/welcome/index.html || { echo "assets are not served from '$BASE_PATH'"; exit 1; }
 
+      # Full Chromium (not the headless shell, which has no camera) plus its system libraries.
+      - name: Install Playwright Chromium
+        run: yarn playwright install --with-deps --no-shell chromium
+
+      # Smoke tests against the exact export that is deployed, served under its base path.
+      - name: E2E smoke tests
+        run: yarn test:e2e
+        env:
+          E2E_BASE_PATH: ${{ github.event_name == 'pull_request' && '/photobooth' || steps.pages.outputs.base_path }}
+
+      - name: Upload E2E report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+
       - name: Upload artifact
         if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
@@ -75,6 +98,9 @@ jobs:
 
   deploy:
     if: github.event_name != 'pull_request'
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

@@ -14,8 +14,9 @@ import {
   recordActivity,
   resetActivity,
 } from '@/src/features/photobooth/services/session/activity'
+import { onPageResume, startSessionHeartbeat } from '@/src/features/photobooth/services/session/heartbeat'
 import { collectGarbage, endSession, touchSession } from '@/src/features/photobooth/services/storage/photoStore'
-import { releaseSession } from '@/src/features/photobooth/services/storage/sessionOwnership'
+import { claimSession, ownsSession, releaseSession } from '@/src/features/photobooth/services/storage/sessionOwnership'
 import {
   clearStoredSession,
   peekStoredSessionId,
@@ -24,8 +25,9 @@ import {
 import { getAssetPath } from '@/src/features/photobooth/utils/assetPath'
 
 const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const
-const HEARTBEAT_MS = 60_000
 const KIOSK_GC_MS = 5 * 60_000
+/** Collection on resume shares the queue with saving photos; once in a while is enough. */
+const RESUME_GC_MIN_INTERVAL_MS = 5 * 60_000
 const TOAST_MS = 10_000
 /** Client navigation is occasionally dropped on the static export; the session is already gone by then. */
 const EXPIRY_NAVIGATION_FALLBACK_MS = 2000
@@ -36,11 +38,12 @@ function closeOpenDialogs() {
 }
 
 /**
- * Mounted once in the root layout. On every device it records real user
- * activity and keeps the session's storage record alive, which is what
- * protects an open tab from other tabs' garbage collection. Only in kiosk
- * mode does inactivity end the session: a visible warning first, never while
- * a capture or export is running, then every photo of the session is deleted.
+ * Mounted once in the root layout. On every device it runs the session
+ * heartbeat (liveness, independent of interaction), records real user activity
+ * (idle clock) and, when the page runs again after being hidden or frozen,
+ * refreshes liveness and collects abandoned sessions. Only in kiosk mode does
+ * inactivity end the session: a visible warning first, never while a capture
+ * or export is running, then every photo of the session is deleted.
  */
 export default function SessionActivityGuard() {
   const router = useRouter()
@@ -61,18 +64,41 @@ export default function SessionActivityGuard() {
   }, [])
 
   useEffect(() => {
-    let lastHeartbeatAt = 0
-    function handleActivity() {
-      const now = Date.now()
-      recordActivity(now)
-      if (now - lastHeartbeatAt < HEARTBEAT_MS) return
-      lastHeartbeatAt = now
-      const sessionId = peekStoredSessionId()
-      if (sessionId) void touchSession(sessionId)
-    }
-
+    const handleActivity = () => recordActivity()
     ACTIVITY_EVENTS.forEach((type) => window.addEventListener(type, handleActivity, { capture: true, passive: true }))
     return () => ACTIVITY_EVENTS.forEach((type) => window.removeEventListener(type, handleActivity, { capture: true }))
+  }, [])
+
+  useEffect(() => {
+    // Screens claim their session as they open; this covers a reload on Welcome,
+    // where no screen does, so the stored session keeps its heartbeat.
+    const storedId = peekStoredSessionId()
+    if (storedId) {
+      void claimSession(storedId).then((owned) => {
+        if (owned) void touchSession(storedId)
+      })
+    }
+
+    const stopHeartbeat = startSessionHeartbeat({
+      getSessionId: peekStoredSessionId,
+      owns: ownsSession,
+      touch: (sessionId) => void touchSession(sessionId),
+      setInterval: (callback, ms) => setInterval(callback, ms),
+      clearInterval: (id) => clearInterval(id),
+      onResume: onPageResume,
+    })
+    // Eventual cleanup: a page that was frozen or in the background catches up when it runs again.
+    let lastCollectAt = Date.now()
+    const stopCollecting = onPageResume(() => {
+      if (Date.now() - lastCollectAt < RESUME_GC_MIN_INTERVAL_MS) return
+      lastCollectAt = Date.now()
+      const sessionId = peekStoredSessionId()
+      void collectGarbage(sessionId ? [sessionId] : [])
+    })
+    return () => {
+      stopHeartbeat()
+      stopCollecting()
+    }
   }, [])
 
   const route = pathname.replace(/\/+$/, '') || PHOTOBOOTH_ROUTES.HOME

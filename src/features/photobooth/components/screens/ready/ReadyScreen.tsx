@@ -12,11 +12,13 @@ import { getExperience } from '@/src/features/photobooth/config/experiences'
 import { PHOTOBOOTH_ROUTES } from '@/src/features/photobooth/config/routes'
 import { PHOTOBOOTH_SCREENS } from '@/src/features/photobooth/config/screenState'
 import { SESSION_NOTICE_COPY } from '@/src/features/photobooth/config/sessionNotices'
+import { describeReloadLoss, describeStorageRisk } from '@/src/features/photobooth/config/storageNotices'
 import { getLayout } from '@/src/features/photobooth/domain/layouts'
 import { getLook, toCssFilter } from '@/src/features/photobooth/domain/looks'
 import {
   PHOTOBOOTH_COUNTDOWN_OPTIONS,
   getCapturedCount,
+  getReferencedPhotoIds,
   markReady,
   releaseMissingShots,
   type PhotoboothCountdown,
@@ -25,11 +27,17 @@ import { useCamera } from '@/src/features/photobooth/hooks/useCamera'
 import { useNavigationLock } from '@/src/features/photobooth/hooks/useNavigationLock'
 import { usePhotoboothSession } from '@/src/features/photobooth/hooks/usePhotoboothSession'
 import { usePhotoUrls } from '@/src/features/photobooth/hooks/usePhotoUrls'
-import { getPhotoStoreStatus } from '@/src/features/photobooth/services/storage/photoStore'
+import {
+  getMemoryOnlyPhotos,
+  getPhotoStoreStatus,
+  type PhotoStoreStatus,
+} from '@/src/features/photobooth/services/storage/photoStore'
 import { consumeSessionNotice } from '@/src/features/photobooth/services/storage/sessionStorage'
 
 const STATUS_COPY = {
   starting: 'Đang mở camera…',
+  'waiting-permission': 'Đang chờ bạn cho phép dùng camera',
+  'timed-out': 'Camera phản hồi quá lâu',
   ready: 'Camera đã sẵn sàng',
   paused: 'Chạm vào khung hình để bật camera',
   error: 'Camera chưa sẵn sàng',
@@ -43,13 +51,13 @@ export default function ReadyScreen() {
   const [pickedCountdown, setPickedCountdown] = useState<PhotoboothCountdown | null>(null)
   const [isLeaving, setIsLeaving] = useNavigationLock()
   const [notice, setNotice] = useState<string | null>(null)
-  const [isMemoryOnly, setIsMemoryOnly] = useState(false)
+  const [storageStatus, setStorageStatus] = useState<PhotoStoreStatus | null>(null)
 
   useEffect(() => {
     if (!isLoaded) return
     const pending = consumeSessionNotice()
     if (pending) setNotice(SESSION_NOTICE_COPY[pending])
-    void getPhotoStoreStatus().then((status) => setIsMemoryOnly(!status.persistent))
+    void getPhotoStoreStatus().then(setStorageStatus)
   }, [isLoaded])
 
   // Shots already taken but gone from this device are re-taken in Capture.
@@ -73,6 +81,8 @@ export default function ReadyScreen() {
   const countdown = pickedCountdown ?? session.countdown
   const capturedCount = getCapturedCount(session)
   const isCameraReady = camera.state.status === 'ready'
+  const memoryOnly = getMemoryOnlyPhotos(getReferencedPhotoIds(session))
+  const storageNote = describeStorageRisk(storageStatus, memoryOnly)
 
   function handleReady() {
     if (!isCameraReady || isLeaving) return
@@ -90,6 +100,7 @@ export default function ReadyScreen() {
           camera={camera}
           filter={toCssFilter(getLook(session.lookId))}
           slot={layout.slots[0]}
+          reloadNote={describeReloadLoss(memoryOnly)}
         />
 
         <aside className="flex shrink-0 flex-col gap-4 md:w-[300px] md:[justify-content:safe_center] short:min-h-0 short:gap-3 short:overflow-y-auto">
@@ -122,10 +133,9 @@ export default function ReadyScreen() {
               {notice}
             </p>
           ) : null}
-          {isMemoryOnly ? (
+          {storageNote ? (
             <p role="status" className="rounded-2xl bg-paper-deep px-3 py-2 text-[12px] leading-snug text-ink-soft">
-              Trình duyệt này không cho lưu ảnh lâu dài (thường gặp ở chế độ riêng tư). Ảnh chỉ được giữ tạm trong tab
-              này — đừng tải lại trang trước khi tải ảnh về.
+              {storageNote}
             </p>
           ) : null}
 

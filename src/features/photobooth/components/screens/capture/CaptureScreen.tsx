@@ -11,6 +11,7 @@ import ScreenHeader from '@/src/features/photobooth/components/shared/layout/Scr
 import ScreenShell from '@/src/features/photobooth/components/shared/layout/ScreenShell'
 import { PHOTOBOOTH_ROUTES, type PhotoboothRoute } from '@/src/features/photobooth/config/routes'
 import { PHOTOBOOTH_SCREENS } from '@/src/features/photobooth/config/screenState'
+import { describeReloadLoss, describeStorageRisk } from '@/src/features/photobooth/config/storageNotices'
 import { getLayout } from '@/src/features/photobooth/domain/layouts'
 import { getLook, toCssFilter } from '@/src/features/photobooth/domain/looks'
 import {
@@ -21,6 +22,7 @@ import {
   getCapturedCount,
   getExperiencePrompt,
   getNextShotIndex,
+  getReferencedPhotoIds,
   getShotsPerPress,
   isCaptureComplete,
   recordShot,
@@ -34,12 +36,18 @@ import { captureVideoFrameWithRetry } from '@/src/features/photobooth/services/c
 import { beginBusy } from '@/src/features/photobooth/services/session/activity'
 import {
   deletePhotos,
+  getMemoryOnlyPhotos,
   getPhotoStoreStatus,
-  isPhotoStorePersistent,
   savePhoto,
+  type PhotoStoreStatus,
 } from '@/src/features/photobooth/services/storage/photoStore'
 import { readStoredSession } from '@/src/features/photobooth/services/storage/sessionStorage'
 import { navigateWithFallback } from '@/src/features/photobooth/utils/navigation'
+
+function isSessionReloadSafe() {
+  const session = readStoredSession().session
+  return !session || getMemoryOnlyPhotos(getReferencedPhotoIds(session)).length === 0
+}
 
 /** Marks a run that was cancelled or whose screen went away; not an error to show. */
 class CaptureAborted extends Error {}
@@ -82,7 +90,7 @@ export default function CaptureScreen() {
   const [flashKey, setFlashKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [recoveredCount, setRecoveredCount] = useState(0)
-  const [isMemoryOnly, setIsMemoryOnly] = useState(false)
+  const [storageStatus, setStorageStatus] = useState<PhotoStoreStatus | null>(null)
   const [leavingTo, setLeavingTo] = useState<PhotoboothRoute | null>(null)
   const [isNavigationStuck, setIsNavigationStuck] = useState(false)
   const lockRef = useRef(false)
@@ -108,7 +116,7 @@ export default function CaptureScreen() {
 
   useEffect(() => {
     if (!isLoaded) return
-    void getPhotoStoreStatus().then((status) => setIsMemoryOnly(!status.persistent))
+    void getPhotoStoreStatus().then(setStorageStatus)
   }, [isLoaded])
 
   // Earlier shots whose photo is gone (reload with memory-only storage) are
@@ -133,7 +141,8 @@ export default function CaptureScreen() {
       lockRef.current = true
       setLeavingTo(to)
       navigateWithFallback(router, to, PHOTOBOOTH_ROUTES.CAPTURE, {
-        allowHardNavigation: isPhotoStorePersistent(),
+        // A reload is only safe while none of this session's photos live in memory alone.
+        allowHardNavigation: isSessionReloadSafe(),
       })
     },
     [router]
@@ -204,10 +213,7 @@ export default function CaptureScreen() {
           void deletePhotos([photoId])
           throw attachError
         }
-        if (aliveRef.current) {
-          setIsSaving(false)
-          setIsMemoryOnly(!isPhotoStorePersistent())
-        }
+        if (aliveRef.current) setIsSaving(false)
       }
 
       if (!aliveRef.current || run.cancelled) return
@@ -274,6 +280,7 @@ export default function CaptureScreen() {
   const activeSlot = layout.slots.find((slot) => slot.shotIndex === activeShotIndex) ?? layout.slots[0]
   const filter = toCssFilter(getLook(session.lookId))
   const isTimed = session.countdown > 0
+  const memoryOnly = getMemoryOnlyPhotos(getReferencedPhotoIds(session))
   const shutterLabel = retake ? 'Chụp lại' : isTimed ? (getCapturedCount(session) > 0 ? 'Chụp tiếp' : 'Bắt đầu chụp') : 'Chụp'
   const hint = retake
     ? 'Ảnh mới chỉ thay ảnh cũ khi bạn xác nhận ở bước Xem lại.'
@@ -283,7 +290,7 @@ export default function CaptureScreen() {
   const message = error ?? actionError
   const notes = [
     recoveredCount > 0 ? `${recoveredCount} ảnh trước không còn trên máy này nên sẽ được chụp bù.` : null,
-    isMemoryOnly ? 'Trình duyệt chỉ giữ ảnh tạm trong tab này — đừng tải lại trang trước khi tải ảnh về.' : null,
+    describeStorageRisk(storageStatus, memoryOnly),
   ].filter(Boolean)
 
   return (
@@ -312,7 +319,7 @@ export default function CaptureScreen() {
           </div>
 
           <div className="mt-3 flex min-h-0 flex-1 flex-col">
-            <CameraViewport camera={camera} filter={filter} slot={activeSlot}>
+            <CameraViewport camera={camera} filter={filter} slot={activeSlot} reloadNote={describeReloadLoss(memoryOnly)}>
               {countdownValue !== null ? (
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                   <span

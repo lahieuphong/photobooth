@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --import ./tests/setup/register.mjs 'tests/**/*.test.ts'"
+    "test": "node --test --import ./tests/setup/register.mjs 'tests/**/*.test.ts'",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -21,6 +22,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "25.6.0",
     "@types/react": "^19",

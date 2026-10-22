@@ -1,6 +1,6 @@
 'use client'
 
-import { CameraOff, Play, RefreshCw } from 'lucide-react'
+import { CameraOff, Hourglass, Play, RefreshCw, RotateCw } from 'lucide-react'
 import type { ReactNode } from 'react'
 import Spinner from '@/src/features/photobooth/components/shared/feedback/Spinner'
 import type { PhotoboothLayoutSlot } from '@/src/features/photobooth/domain/layouts'
@@ -38,6 +38,22 @@ const CAMERA_ERROR_COPY: Record<CameraErrorKind, { title: string; body: string }
   },
 }
 
+function ReloadButton({ onReload, note }: { onReload: () => void; note: string | null }) {
+  return (
+    <>
+      <button
+        type="button"
+        onClick={onReload}
+        className="mt-2 inline-flex h-11 items-center gap-2 rounded-full bg-white px-5 text-[14px] font-semibold text-ink"
+      >
+        <RotateCw aria-hidden="true" size={16} />
+        Tải lại trang
+      </button>
+      {note ? <p className="max-w-[340px] text-[12px] leading-snug text-white/70">{note}</p> : null}
+    </>
+  )
+}
+
 type CameraViewportProps = {
   camera: CameraController
   /** CSS filter previewing the session look on the live image (photos stay unfiltered). */
@@ -48,11 +64,13 @@ type CameraViewportProps = {
    * see is what gets printed.
    */
   slot: PhotoboothLayoutSlot
+  /** Shown under the reload button when a reload would lose photos kept only in memory. */
+  reloadNote?: string | null
   children?: ReactNode
 }
 
-export default function CameraViewport({ camera, filter = 'none', slot, children }: CameraViewportProps) {
-  const { videoRef, state, mirrored, retry, resume } = camera
+export default function CameraViewport({ camera, filter = 'none', slot, reloadNote = null, children }: CameraViewportProps) {
+  const { videoRef, state, mirrored, retry, resume, reload } = camera
   const aspectRatio = slot.width / slot.height
 
   return (
@@ -87,6 +105,32 @@ export default function CameraViewport({ camera, filter = 'none', slot, children
         {state.status === 'starting' ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <Spinner tone="light" label="Đang mở camera…" />
+          </div>
+        ) : null}
+
+        {state.status === 'waiting-permission' ? (
+          <div role="status" className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center text-white">
+            <Spinner tone="light" />
+            <p className="font-display text-[22px] leading-tight">Đang chờ bạn cho phép dùng camera</p>
+            <p className="max-w-[340px] text-[14px] leading-relaxed text-white/75">
+              Chọn “Cho phép” trên thông báo của trình duyệt. Nếu không thấy thông báo, bấm biểu tượng camera hoặc ổ khóa trên thanh địa chỉ
+              {state.overdue ? ', hoặc tải lại trang để trình duyệt hỏi lại.' : '.'}
+            </p>
+            {state.overdue ? <ReloadButton onReload={reload} note={reloadNote} /> : null}
+          </div>
+        ) : null}
+
+        {state.status === 'timed-out' ? (
+          // The request (or playback) is still pending and cannot be cancelled, so there is
+          // no Retry here: the camera may still appear by itself, otherwise only a reload helps.
+          <div role="alert" className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center text-white">
+            <Hourglass aria-hidden="true" size={28} className="text-white/70" />
+            <p className="font-display text-[22px] leading-tight">Camera phản hồi quá lâu</p>
+            <p className="max-w-[340px] text-[14px] leading-relaxed text-white/75">
+              Nếu trình duyệt đang hỏi quyền dùng camera, hãy chọn “Cho phép” — hình sẽ tự hiện. Nếu không, đóng ứng dụng khác đang dùng
+              camera rồi tải lại trang.
+            </p>
+            <ReloadButton onReload={reload} note={reloadNote} />
           </div>
         ) : null}
 
