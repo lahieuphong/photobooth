@@ -3,6 +3,9 @@ name: Deploy Next.js to GitHub Pages
 on:
   push:
     branches: ['main']
+  # Pull requests run every quality gate and the static export, but never deploy.
+  pull_request:
+    branches: ['main']
   workflow_dispatch:
 
 permissions:
@@ -11,7 +14,8 @@ permissions:
   id-token: write
 
 concurrency:
-  group: 'pages'
+  # Deploys share one group; each pull request gets its own so it cannot cancel a deploy.
+  group: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.ref) || 'pages' }}
   cancel-in-progress: true
 
 jobs:
@@ -22,30 +26,54 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Node 22 LTS: `yarn test` runs the .ts unit tests natively (type stripping, Node >= 22.18).
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '22.x'
           cache: yarn
-
-      - name: Setup Pages
-        id: pages
-        uses: actions/configure-pages@v5
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
+      - name: Typecheck
+        run: yarn typecheck
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Unit tests
+        run: yarn test
+
+      - name: Setup Pages
+        id: pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+
       - name: Build
         run: yarn build
         env:
-          PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          # Pull requests have no Pages context; they build with the repo's default /photobooth path.
+          PAGES_BASE_PATH: ${{ github.event_name == 'pull_request' && '/photobooth' || steps.pages.outputs.base_path }}
+
+      - name: Verify static export
+        env:
+          BASE_PATH: ${{ github.event_name == 'pull_request' && '/photobooth' || steps.pages.outputs.base_path }}
+        run: |
+          for route in welcome experience ready capture review studio result; do
+            test -f "out/$route/index.html" || { echo "missing out/$route/index.html"; exit 1; }
+          done
+          test -f out/sw.js && test -f out/manifest.webmanifest
+          grep -q "$BASE_PATH/_next/static/" out/welcome/index.html || { echo "assets are not served from '$BASE_PATH'"; exit 1; }
 
       - name: Upload artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./out
 
   deploy:
+    if: github.event_name != 'pull_request'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

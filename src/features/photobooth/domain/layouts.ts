@@ -127,3 +127,34 @@ export function computeCoverCrop(
   const sh = sourceWidth / targetRatio
   return { sx: 0, sy: (sourceHeight - sh) / 2, sw: sourceWidth, sh }
 }
+
+export type SlotDraw = {
+  shotIndex: number
+  crop: CoverCrop
+  /** Integer pixel rectangle on the output canvas. */
+  dest: { x: number; y: number; width: number; height: number }
+}
+
+/**
+ * Where each slot's photo is drawn on a canvas `scale` times the design size.
+ * The crop is computed for the rounded destination box, so photos are never
+ * stretched, only cover-cropped from the center like the on-screen preview.
+ */
+export function planSlotDraws(
+  layout: PhotoboothLayout,
+  sourceSizes: ReadonlyArray<{ width: number; height: number }>,
+  scale: number
+): SlotDraw[] {
+  return layout.slots.map((slot) => {
+    const source = sourceSizes[slot.shotIndex]
+    const x = Math.round(slot.x * scale)
+    const y = Math.round(slot.y * scale)
+    const width = Math.round((slot.x + slot.width) * scale) - x
+    const height = Math.round((slot.y + slot.height) * scale) - y
+    return {
+      shotIndex: slot.shotIndex,
+      crop: computeCoverCrop(source.width, source.height, width, height),
+      dest: { x, y, width, height },
+    }
+  })
+}

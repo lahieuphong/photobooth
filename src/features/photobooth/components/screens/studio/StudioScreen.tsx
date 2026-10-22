@@ -7,6 +7,7 @@ import { useState, type ReactNode } from 'react'
 import FittedComposition from '@/src/features/photobooth/components/shared/composition/FittedComposition'
 import PhotoComposition from '@/src/features/photobooth/components/shared/composition/PhotoComposition'
 import Button from '@/src/features/photobooth/components/shared/controls/Button'
+import MissingPhotosNotice from '@/src/features/photobooth/components/shared/feedback/MissingPhotosNotice'
 import Spinner from '@/src/features/photobooth/components/shared/feedback/Spinner'
 import ScreenHeader from '@/src/features/photobooth/components/shared/layout/ScreenHeader'
 import ScreenShell from '@/src/features/photobooth/components/shared/layout/ScreenShell'
@@ -16,7 +17,14 @@ import { PHOTOBOOTH_SCREENS } from '@/src/features/photobooth/config/screenState
 import { PHOTOBOOTH_FRAMES, formatFrameDate } from '@/src/features/photobooth/domain/frames'
 import { getCompatibleLayouts, getLayout } from '@/src/features/photobooth/domain/layouts'
 import { PHOTOBOOTH_LOOKS, toCssFilter } from '@/src/features/photobooth/domain/looks'
-import { completeSession, setFrame, setLayout, setLook } from '@/src/features/photobooth/domain/session'
+import { getResumeRoute } from '@/src/features/photobooth/domain/routeGuard'
+import {
+  completeSession,
+  releaseMissingShots,
+  setFrame,
+  setLayout,
+  setLook,
+} from '@/src/features/photobooth/domain/session'
 import { usePhotoboothSession } from '@/src/features/photobooth/hooks/usePhotoboothSession'
 import { usePhotoUrls } from '@/src/features/photobooth/hooks/usePhotoUrls'
 
@@ -33,12 +41,14 @@ function OptionButton({
   onClick,
   label,
   caption,
+  disabled = false,
   children,
 }: {
   isSelected: boolean
   onClick: () => void
   label: string
   caption?: string
+  disabled?: boolean
   children: ReactNode
 }) {
   return (
@@ -47,7 +57,8 @@ function OptionButton({
       role="radio"
       aria-checked={isSelected}
       onClick={onClick}
-      className="group flex w-[76px] shrink-0 flex-col items-center gap-1.5 text-center focus-visible:outline-none"
+      disabled={disabled}
+      className="group flex w-[76px] shrink-0 flex-col items-center gap-1.5 text-center focus-visible:outline-none disabled:opacity-45"
     >
       <span
         className={[
@@ -66,9 +77,10 @@ function OptionButton({
 
 export default function StudioScreen() {
   const router = useRouter()
-  const { session, isLoaded, update } = usePhotoboothSession(PHOTOBOOTH_ROUTES.STUDIO)
-  const { urls } = usePhotoUrls(session?.shots ?? [])
+  const { session, isLoaded, apply, actionError } = usePhotoboothSession(PHOTOBOOTH_ROUTES.STUDIO)
+  const { urls, isLoading, missingIds } = usePhotoUrls(session?.shots ?? [])
   const [tab, setTab] = useState<StudioTab>('look')
+  const [isLeaving, setIsLeaving] = useState(false)
 
   if (!isLoaded || !session) {
     return (
@@ -84,9 +96,22 @@ export default function StudioScreen() {
   const dateLabel = formatFrameDate(session.createdAt)
   const composition = { layoutId: session.layoutId, frameId: session.frameId, lookId: session.lookId, photoUrls: urls, dateLabel }
 
+  const hasMissing = missingIds.length > 0
+  const isLocked = isLeaving || hasMissing
+
   function handleFinish() {
-    update((current, now) => completeSession(current, now))
+    if (isLocked || isLoading) return
+    if (!apply((current, now) => completeSession(current, now))) return
+    setIsLeaving(true)
     router.push(PHOTOBOOTH_ROUTES.RESULT, { scroll: false })
+  }
+
+  function handleRecover() {
+    if (isLeaving) return
+    const next = apply((current, now) => releaseMissingShots(current, missingIds, now), { deleteDropped: false })
+    if (!next) return
+    setIsLeaving(true)
+    router.push(getResumeRoute(next), { scroll: false })
   }
 
   // Shots were framed in the camera for the experience's own slot shape.
@@ -97,7 +122,7 @@ export default function StudioScreen() {
   const layoutNote = isRecropped
     ? `Ảnh được căn khung cho ${capturedLayout.label}; bố cục này cắt lại ảnh theo tỉ lệ ô mới.`
     : layout.repeatsShots
-    ? 'Mỗi ảnh được in hai lần — cắt đôi để có hai dải giống nhau.'
+    ? 'Mỗi ảnh xuất hiện hai lần — nếu in ra, cắt đôi để có hai dải giống nhau.'
     : compatibleLayouts.length === 1
       ? `Bộ ${session.shotCount} ảnh dùng ${layout.label}.`
       : layout.description
@@ -112,8 +137,10 @@ export default function StudioScreen() {
         <aside className="flex shrink-0 flex-col gap-3 md:w-[340px] md:[justify-content:safe_center] short:min-h-0 short:overflow-y-auto">
           <div className="hidden md:block short:hidden">
             <h1 className="font-display text-[40px] font-light leading-tight">Studio</h1>
-            <p className="mt-1 text-[14px] text-ink-soft">Mọi thay đổi chỉ áp dụng lên bản in — ảnh gốc luôn được giữ nguyên.</p>
+            <p className="mt-1 text-[14px] text-ink-soft">Mọi thay đổi chỉ áp dụng lên ảnh hoàn chỉnh — ảnh gốc luôn được giữ nguyên.</p>
           </div>
+
+          {hasMissing ? <MissingPhotosNotice count={missingIds.length} onRecover={handleRecover} disabled={isLeaving} /> : null}
 
           <div role="tablist" aria-label="Tùy chỉnh" className="grid grid-cols-3 gap-1 rounded-full bg-paper-deep p-1">
             {TABS.map((item) => (
@@ -140,7 +167,8 @@ export default function StudioScreen() {
                     key={look.id}
                     label={look.label}
                     isSelected={session.lookId === look.id}
-                    onClick={() => update((current, now) => setLook(current, look.id, now))}
+                    disabled={isLocked}
+                    onClick={() => apply((current, now) => setLook(current, look.id, now))}
                   >
                     <span className="relative block aspect-square w-full bg-paper-deep">
                       {urls[0] ? (
@@ -157,7 +185,8 @@ export default function StudioScreen() {
                     key={frame.id}
                     label={frame.label}
                     isSelected={session.frameId === frame.id}
-                    onClick={() => update((current, now) => setFrame(current, frame.id, now))}
+                    disabled={isLocked}
+                    onClick={() => apply((current, now) => setFrame(current, frame.id, now))}
                   >
                     <PhotoComposition {...composition} frameId={frame.id} imageSizes="76px" />
                   </OptionButton>
@@ -171,7 +200,8 @@ export default function StudioScreen() {
                     label={option.label}
                     caption={`${option.slots.length} ô`}
                     isSelected={session.layoutId === option.id}
-                    onClick={() => update((current, now) => setLayout(current, option.id, now))}
+                    disabled={isLocked}
+                    onClick={() => apply((current, now) => setLayout(current, option.id, now))}
                   >
                     <PhotoComposition {...composition} layoutId={option.id} imageSizes="76px" />
                   </OptionButton>
@@ -187,7 +217,13 @@ export default function StudioScreen() {
                 : layoutNote}
           </p>
 
-          <Button onClick={handleFinish} size="lg" className="w-full">
+          {actionError ? (
+            <p role="alert" className="text-[13px] text-danger">
+              {actionError}
+            </p>
+          ) : null}
+
+          <Button onClick={handleFinish} disabled={isLocked || isLoading} size="lg" className="w-full">
             Hoàn tất
             <ArrowRight aria-hidden="true" size={18} />
           </Button>

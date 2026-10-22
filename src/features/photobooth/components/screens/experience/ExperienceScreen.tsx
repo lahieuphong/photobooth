@@ -14,13 +14,16 @@ import {
 } from '@/src/features/photobooth/config/experiences'
 import { PHOTOBOOTH_ROUTES, type PhotoboothRoute } from '@/src/features/photobooth/config/routes'
 import { PHOTOBOOTH_SCREENS } from '@/src/features/photobooth/config/screenState'
+import { SESSION_NOTICE_COPY } from '@/src/features/photobooth/config/sessionNotices'
 import { getLayout } from '@/src/features/photobooth/domain/layouts'
 import { getResumeRoute } from '@/src/features/photobooth/domain/routeGuard'
 import { createSession, getCapturedCount } from '@/src/features/photobooth/domain/session'
-import { deleteSessionPhotos, prunePhotos } from '@/src/features/photobooth/services/storage/photoStore'
+import { collectGarbage, endSession } from '@/src/features/photobooth/services/storage/photoStore'
+import { claimSession, releaseSession } from '@/src/features/photobooth/services/storage/sessionOwnership'
 import {
   consumeSessionNotice,
   readStoredSession,
+  setSessionNotice,
   writeStoredSession,
 } from '@/src/features/photobooth/services/storage/sessionStorage'
 
@@ -46,12 +49,13 @@ export default function ExperienceScreen() {
       setSelectedId(session.experienceId)
       if (getCapturedCount(session) > 0) setResumeRoute(getResumeRoute(session))
     }
-    if (consumeSessionNotice() === 'session-reset' || discarded) {
-      setNotice('Phiên chụp trước không còn hợp lệ nên đã được làm mới. Hãy chọn một trải nghiệm để bắt đầu.')
-    }
+    const pending = consumeSessionNotice() ?? (discarded ? 'session-reset' : null)
+    if (pending) setNotice(SESSION_NOTICE_COPY[pending])
+    // Removes photos of sessions that were ended or abandoned in closed tabs.
+    void collectGarbage(session ? [session.id] : [])
   }, [])
 
-  function handleContinue() {
+  async function handleContinue() {
     if (isStarting) return
     if (resumeRoute && !isConfirmingRestart) {
       setIsConfirmingRestart(true)
@@ -60,17 +64,26 @@ export default function ExperienceScreen() {
     setIsStarting(true)
     setError(null)
 
+    let session
+    const previous = readStoredSession().session
     try {
-      const previous = readStoredSession().session
-      const session = createSession(getExperience(selectedId), createSessionId(), Date.now())
+      session = createSession(getExperience(selectedId), createSessionId(), Date.now())
       writeStoredSession(session)
-      if (previous) void deleteSessionPhotos(previous.id).catch(() => undefined)
-      void prunePhotos(session.id, []).catch(() => undefined)
-      router.push(PHOTOBOOTH_ROUTES.READY, { scroll: false })
     } catch {
       setIsStarting(false)
       setError('Không thể bắt đầu phiên chụp. Trình duyệt có thể đang chặn lưu trữ dữ liệu.')
+      return
     }
+
+    // The new session is saved first, so a failed cleanup can never leave this tab without one.
+    if (previous) {
+      const { complete } = await endSession(previous.id).catch(() => ({ complete: false }))
+      releaseSession(previous.id)
+      if (getCapturedCount(previous) > 0 || !complete) setSessionNotice(complete ? 'session-ended' : 'cleanup-incomplete')
+    }
+    void claimSession(session.id)
+    void collectGarbage([session.id])
+    router.push(PHOTOBOOTH_ROUTES.READY, { scroll: false })
   }
 
   return (
@@ -164,7 +177,7 @@ export default function ExperienceScreen() {
               Tiếp tục phiên cũ
             </Button>
           ) : null}
-          <Button onClick={handleContinue} disabled={isStarting} size="lg">
+          <Button onClick={() => void handleContinue()} disabled={isStarting} size="lg">
             {isConfirmingRestart ? 'Xác nhận bắt đầu lại' : resumeRoute ? 'Bắt đầu lại' : 'Tiếp tục'}
             <ArrowRight aria-hidden="true" size={18} />
           </Button>

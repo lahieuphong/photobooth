@@ -2,7 +2,7 @@
 
 import { ArrowRight, Timer } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import CameraViewport from '@/src/features/photobooth/components/shared/camera/CameraViewport'
 import Button from '@/src/features/photobooth/components/shared/controls/Button'
 import Spinner from '@/src/features/photobooth/components/shared/feedback/Spinner'
@@ -11,16 +11,21 @@ import ScreenShell from '@/src/features/photobooth/components/shared/layout/Scre
 import { getExperience } from '@/src/features/photobooth/config/experiences'
 import { PHOTOBOOTH_ROUTES } from '@/src/features/photobooth/config/routes'
 import { PHOTOBOOTH_SCREENS } from '@/src/features/photobooth/config/screenState'
+import { SESSION_NOTICE_COPY } from '@/src/features/photobooth/config/sessionNotices'
 import { getLayout } from '@/src/features/photobooth/domain/layouts'
 import { getLook, toCssFilter } from '@/src/features/photobooth/domain/looks'
 import {
   PHOTOBOOTH_COUNTDOWN_OPTIONS,
   getCapturedCount,
   markReady,
+  releaseMissingShots,
   type PhotoboothCountdown,
 } from '@/src/features/photobooth/domain/session'
 import { useCamera } from '@/src/features/photobooth/hooks/useCamera'
 import { usePhotoboothSession } from '@/src/features/photobooth/hooks/usePhotoboothSession'
+import { usePhotoUrls } from '@/src/features/photobooth/hooks/usePhotoUrls'
+import { getPhotoStoreStatus } from '@/src/features/photobooth/services/storage/photoStore'
+import { consumeSessionNotice } from '@/src/features/photobooth/services/storage/sessionStorage'
 
 const STATUS_COPY = {
   starting: 'Đang mở camera…',
@@ -31,11 +36,27 @@ const STATUS_COPY = {
 
 export default function ReadyScreen() {
   const router = useRouter()
-  const { session, isLoaded, update } = usePhotoboothSession(PHOTOBOOTH_ROUTES.READY)
+  const { session, isLoaded, apply, actionError } = usePhotoboothSession(PHOTOBOOTH_ROUTES.READY)
   const camera = useCamera(isLoaded)
+  const { isLoading: isLoadingPhotos, missingIds } = usePhotoUrls(session?.shots ?? [])
   const [pickedCountdown, setPickedCountdown] = useState<PhotoboothCountdown | null>(null)
   const [isLeaving, setIsLeaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [isMemoryOnly, setIsMemoryOnly] = useState(false)
+
+  useEffect(() => {
+    if (!isLoaded) return
+    const pending = consumeSessionNotice()
+    if (pending) setNotice(SESSION_NOTICE_COPY[pending])
+    void getPhotoStoreStatus().then((status) => setIsMemoryOnly(!status.persistent))
+  }, [isLoaded])
+
+  // Shots already taken but gone from this device are re-taken in Capture.
+  const missingKey = missingIds.join('|')
+  useEffect(() => {
+    if (isLoadingPhotos || !missingKey) return
+    apply((current, now) => releaseMissingShots(current, missingKey.split('|'), now), { deleteDropped: false })
+  }, [apply, isLoadingPhotos, missingKey])
 
   if (!isLoaded || !session) {
     return (
@@ -54,14 +75,9 @@ export default function ReadyScreen() {
 
   function handleReady() {
     if (!isCameraReady || isLeaving) return
+    if (!apply((current, now) => markReady(current, countdown, now))) return
     setIsLeaving(true)
-    try {
-      update((current, now) => markReady(current, countdown, now))
-      router.push(PHOTOBOOTH_ROUTES.CAPTURE, { scroll: false })
-    } catch {
-      setIsLeaving(false)
-      setError('Không lưu được phiên chụp. Hãy tải lại trang rồi thử lại.')
-    }
+    router.push(PHOTOBOOTH_ROUTES.CAPTURE, { scroll: false })
   }
 
   return (
@@ -80,7 +96,7 @@ export default function ReadyScreen() {
             <p className="text-[12px] font-semibold uppercase tracking-[0.2em] text-accent">{experience.title}</p>
             <h1 className="mt-1 font-display text-[clamp(26px,5vw,40px)] font-light leading-tight short:text-[24px]">Hãy vào khung hình.</h1>
             <p className="mt-1.5 text-[14px] leading-relaxed text-ink-soft short:hidden">
-              Khung hình bên trên chính là phần sẽ được in. Đứng cách màn hình khoảng một sải tay. {experience.shotCount} ảnh ·{' '}
+              Khung hình này chính là phần sẽ có trong ảnh. Đứng cách màn hình khoảng một sải tay. {experience.shotCount} ảnh ·{' '}
               {layout.label}
               {capturedCount > 0 ? ` · đã chụp ${capturedCount}` : ''}.
             </p>
@@ -95,9 +111,20 @@ export default function ReadyScreen() {
             />
             {STATUS_COPY[camera.state.status]}
           </p>
-          {error ? (
+          {actionError ? (
             <p role="alert" className="text-[13px] text-danger">
-              {error}
+              {actionError}
+            </p>
+          ) : null}
+          {notice ? (
+            <p role="status" className="rounded-2xl bg-paper-deep px-3 py-2 text-[12px] leading-snug text-ink-soft">
+              {notice}
+            </p>
+          ) : null}
+          {isMemoryOnly ? (
+            <p role="status" className="rounded-2xl bg-paper-deep px-3 py-2 text-[12px] leading-snug text-ink-soft">
+              Trình duyệt này không cho lưu ảnh lâu dài (thường gặp ở chế độ riêng tư). Ảnh chỉ được giữ tạm trong tab
+              này — đừng tải lại trang trước khi tải ảnh về.
             </p>
           ) : null}
 

@@ -70,6 +70,39 @@ export function useCamera(enabled: boolean) {
 
   const retry = useCallback(() => setAttempt((value) => value + 1), [])
 
+  // Recover by itself once the cause is fixed: permission granted in site
+  // settings, or a camera plugged in. The Retry button stays available.
+  const errorKind = state.status === 'error' ? state.kind : null
+  useEffect(() => {
+    if (!enabled || !errorKind) return
+    let cancelled = false
+
+    if (errorKind === 'permission-denied') {
+      let permission: PermissionStatus | null = null
+      navigator.permissions
+        ?.query({ name: 'camera' as PermissionName })
+        .then((status) => {
+          if (cancelled) return
+          permission = status
+          status.onchange = () => {
+            if (status.state === 'granted') retry()
+          }
+        })
+        // Firefox and older Safari cannot query camera permission; Retry still works.
+        .catch(() => undefined)
+      return () => {
+        cancelled = true
+        if (permission) permission.onchange = null
+      }
+    }
+
+    if (errorKind === 'not-found' || errorKind === 'disconnected') {
+      const devices = navigator.mediaDevices
+      devices?.addEventListener?.('devicechange', retry)
+      return () => devices?.removeEventListener?.('devicechange', retry)
+    }
+  }, [enabled, errorKind, retry])
+
   const resume = useCallback(async () => {
     try {
       await videoRef.current?.play()

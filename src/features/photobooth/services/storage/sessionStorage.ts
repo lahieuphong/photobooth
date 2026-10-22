@@ -7,7 +7,17 @@ const NOTICE_KEY = 'photobooth.notice'
 /** V1 stored package rounds and base64 photos here; it cannot be mapped to V2. */
 const LEGACY_SESSION_KEYS = ['photobooth_runtime_session']
 
-export type SessionNotice = 'session-reset'
+export type SessionNotice =
+  /** The stored session was unreadable (old version, corrupted) and was dropped. */
+  | 'session-reset'
+  /** Another tab already works on this session; this tab let go of its copy. */
+  | 'duplicate-tab'
+  /** The previous session was ended and every one of its photos deleted. */
+  | 'session-ended'
+  /** The previous session was ended, but some photos could not be deleted yet. */
+  | 'cleanup-incomplete'
+
+const SESSION_NOTICES: SessionNotice[] = ['session-reset', 'duplicate-tab', 'session-ended', 'cleanup-incomplete']
 
 function getStorage(): Storage | null {
   try {
@@ -54,12 +64,16 @@ export function clearStoredSession() {
 }
 
 export function setSessionNotice(notice: SessionNotice) {
-  getStorage()?.setItem(NOTICE_KEY, notice)
+  try {
+    getStorage()?.setItem(NOTICE_KEY, notice)
+  } catch {
+    // A lost notice only hides an explanation; it never affects data.
+  }
 }
 
 export function consumeSessionNotice(): SessionNotice | null {
   const storage = getStorage()
   const notice = storage?.getItem(NOTICE_KEY) ?? null
   storage?.removeItem(NOTICE_KEY)
-  return notice === 'session-reset' ? notice : null
+  return SESSION_NOTICES.includes(notice as SessionNotice) ? (notice as SessionNotice) : null
 }

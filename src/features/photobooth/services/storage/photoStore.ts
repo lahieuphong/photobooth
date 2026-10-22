@@ -1,83 +1,47 @@
+import { getOrphanCutoffMs } from '@/src/features/photobooth/config/kiosk'
+import {
+  createMemoryBackend,
+  openIndexedDbBackend,
+  type CollectDecision,
+  type PhotoBackend,
+  type StoredPhoto,
+} from './photoBackends'
+
 // Original photos are stored as JPEG Blobs in IndexedDB instead of base64 in
 // sessionStorage: a 6-shot session plus a retake draft can exceed the ~5MB Web
 // Storage quota that is shared by every app on the github.io origin. When
-// IndexedDB is unavailable (some private modes) photos fall back to memory,
-// which survives client-side navigation but not a reload.
+// IndexedDB is unavailable (some private modes) or full, photos fall back to
+// memory, which survives client-side navigation but not a reload.
+//
+// Deletion policy. Nothing here ever deletes "whatever the session does not
+// reference", because that set is stale the moment a new photo is written:
+//   1. Photos a session transition drops (replaced retake, cancelled draft) are
+//      deleted by id — see deletePhotos().
+//   2. Ending a session (reset, kiosk expiry) deletes every photo it owns.
+//   3. Garbage collection only removes sessions that were ended or whose
+//      record has not been touched for the orphan cutoff. Each tab's live
+//      session touches its record, so other tabs are never collected. An
+//      ended session keeps a tombstone record for the cutoff, so a photo that
+//      lands late is still collected instead of reviving the session.
+// Every mutation runs through one queue, so cleanups in this tab never overlap.
 
-const DB_NAME = 'photobooth'
-const DB_VERSION = 1
-const STORE = 'photos'
-/** Photos from other tabs/sessions older than this are treated as abandoned. */
-const ABANDONED_AFTER_MS = 6 * 60 * 60 * 1000
-
-type StoredPhoto = {
-  id: string
-  sessionId: string
-  blob: Blob
-  createdAt: number
+export type PhotoStoreStatus = {
+  /** False once any photo had to be kept in memory; a full page reload would lose it. */
+  persistent: boolean
+  reason: 'ok' | 'unavailable' | 'quota' | 'error'
 }
 
-const memoryStore = new Map<string, StoredPhoto>()
-let databasePromise: Promise<IDBDatabase | null> | null = null
-/** False once any photo had to be kept in memory; a full page reload would lose it. */
-let isPersistent = true
+type OpenResult = { backend: PhotoBackend } | { backend: null; reason: 'unsupported' | 'error' }
 
-function requestToPromise<T>(request: IDBRequest<T>) {
-  return new Promise<T>((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
-  })
+type PhotoStoreOptions = {
+  openPersistent: () => Promise<OpenResult>
+  now?: () => number
+  /** Sessions untouched for longer than this are abandoned (closed tab, crashed kiosk). */
+  orphanCutoffMs?: () => number
 }
 
-function openDatabase(): Promise<IDBDatabase | null> {
-  if (!databasePromise) {
-    databasePromise = new Promise((resolve) => {
-      try {
-        if (typeof indexedDB === 'undefined') {
-          resolve(null)
-          return
-        }
-
-        const request = indexedDB.open(DB_NAME, DB_VERSION)
-        request.onupgradeneeded = () => {
-          request.result.createObjectStore(STORE, { keyPath: 'id' })
-        }
-        request.onsuccess = () => {
-          const database = request.result
-          // iOS can drop the connection while the app is backgrounded; reopen on next use.
-          database.onclose = () => {
-            databasePromise = null
-          }
-          database.onversionchange = () => {
-            database.close()
-            databasePromise = null
-          }
-          resolve(database)
-        }
-        request.onerror = () => resolve(null)
-        request.onblocked = () => resolve(null)
-      } catch {
-        resolve(null)
-      }
-    })
-  }
-
-  return databasePromise
-}
-
-async function withStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>) {
-  const database = await openDatabase()
-  if (!database) return null
-
-  const transaction = database.transaction(STORE, mode)
-  const completed = new Promise<void>((resolve, reject) => {
-    transaction.oncomplete = () => resolve()
-    transaction.onerror = () => reject(transaction.error)
-    transaction.onabort = () => reject(transaction.error)
-  })
-  const [value] = await Promise.all([requestToPromise(run(transaction.objectStore(STORE))), completed])
-  return { value }
-}
+/** Heartbeats closer together than this are skipped; the record only needs coarse liveness. */
+const TOUCH_INTERVAL_MS = 15_000
 
 function createPhotoId(sessionId: string) {
   const random =
@@ -87,86 +51,225 @@ function createPhotoId(sessionId: string) {
   return `${sessionId}:${random}`
 }
 
-function isQuotaError(error: unknown) {
-  return error instanceof DOMException && error.name === 'QuotaExceededError'
+export function isQuotaError(error: unknown) {
+  return typeof error === 'object' && error !== null && 'name' in error && error.name === 'QuotaExceededError'
 }
 
-async function putPhoto(photo: StoredPhoto) {
-  return (await withStore('readwrite', (store) => store.put(photo))) !== null
-}
+export function createPhotoStore({ openPersistent, now = Date.now, orphanCutoffMs = () => 24 * 60 * 60 * 1000 }: PhotoStoreOptions) {
+  const memory = createMemoryBackend()
+  let opened: Promise<OpenResult> | null = null
+  let status: PhotoStoreStatus = { persistent: true, reason: 'ok' }
+  let tail: Promise<unknown> = Promise.resolve()
+  let gcRequest: { protectedIds: Set<string>; done: Promise<void> } | null = null
+  const lastTouchAt = new Map<string, number>()
 
-/**
- * Resolves only after the photo is stored, so callers can safely navigate. A
- * failed write is retried once on a fresh connection, then kept in memory;
- * only a full quota is reported to the caller.
- */
-export async function savePhoto(sessionId: string, blob: Blob): Promise<string> {
-  const photo: StoredPhoto = { id: createPhotoId(sessionId), sessionId, blob, createdAt: Date.now() }
+  /** Runs mutations one after another, in call order, even when one of them fails. */
+  function serial<T>(task: () => Promise<T>): Promise<T> {
+    const run = tail.then(task, task)
+    tail = run.catch(() => undefined)
+    return run
+  }
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      if (await putPhoto(photo)) return photo.id
-      break
-    } catch (error) {
-      if (isQuotaError(error)) throw error
-      databasePromise = null
+  function degrade(reason: Exclude<PhotoStoreStatus['reason'], 'ok'>) {
+    if (status.persistent) status = { persistent: false, reason }
+  }
+
+  /** The persistent backend, or null with the reason; a failed open is retried on next use. */
+  async function getPersistent(): Promise<OpenResult> {
+    if (!opened) {
+      opened = openPersistent().catch((): OpenResult => ({ backend: null, reason: 'error' }))
+    }
+    const result = await opened
+    if (!result.backend && result.reason === 'error') opened = null
+    return result
+  }
+
+  async function backends(): Promise<{ list: PhotoBackend[]; reachable: boolean }> {
+    const result = await getPersistent()
+    if (result.backend) return { list: [memory, result.backend], reachable: true }
+    // 'unsupported' means nothing was ever persisted on this browser, so memory is the whole store.
+    return { list: [memory], reachable: result.reason === 'unsupported' }
+  }
+
+  async function collectNow(protectedIds: Set<string>) {
+    const cutoff = now() - orphanCutoffMs()
+    const decide: CollectDecision = (record) => {
+      if (!record || protectedIds.has(record.id)) return null
+      if (record.endedAt !== null) return { keepRecord: record.endedAt >= cutoff }
+      return record.lastActiveAt < cutoff ? { keepRecord: false } : null
+    }
+
+    for (const backend of (await backends()).list) {
+      try {
+        const records = await backend.listSessions()
+        const known = new Set(records.map((record) => record.id))
+        // Photos whose session has no record (written by a build without records):
+        // start their grace period now instead of guessing they are abandoned.
+        for (const sessionId of await backend.listPhotoSessionIds()) {
+          if (!known.has(sessionId)) await backend.touchSession(sessionId, now())
+        }
+        for (const record of records) {
+          if (decide(record)) await backend.collectSession(record.id, decide)
+        }
+      } catch {
+        // Best effort: whatever was not collected now is collected on a later run.
+      }
     }
   }
 
-  memoryStore.set(photo.id, photo)
-  isPersistent = false
-  return photo.id
+  async function putPersistent(backend: PhotoBackend, photo: StoredPhoto, protectedIds: Set<string>) {
+    try {
+      await backend.putPhoto(photo)
+      return true
+    } catch (error) {
+      // Full: free abandoned sessions first. Otherwise retry once (the connection reopens).
+      if (isQuotaError(error)) await collectNow(protectedIds)
+      try {
+        await backend.putPhoto(photo)
+        return true
+      } catch (retryError) {
+        degrade(isQuotaError(retryError) ? 'quota' : 'error')
+        return false
+      }
+    }
+  }
+
+  return {
+    /**
+     * Resolves with the new photo id only after it is stored, so callers can
+     * safely point the session at it and navigate. Falls back to memory rather
+     * than failing the capture; check getStatus() to warn about reloads.
+     */
+    savePhoto(sessionId: string, blob: Blob): Promise<string> {
+      return serial(async () => {
+        const photo: StoredPhoto = { id: createPhotoId(sessionId), sessionId, blob, createdAt: now() }
+        const persistent = await getPersistent()
+
+        if (persistent.backend && (await putPersistent(persistent.backend, photo, new Set([sessionId])))) {
+          lastTouchAt.set(sessionId, photo.createdAt)
+          return photo.id
+        }
+        if (!persistent.backend) degrade(persistent.reason === 'unsupported' ? 'unavailable' : 'error')
+
+        await memory.putPhoto(photo)
+        return photo.id
+      })
+    },
+
+    /** The stored blob, or null when it is missing on this device. */
+    async loadPhoto(id: string): Promise<Blob | null> {
+      const inMemory = await memory.getPhoto(id)
+      if (inMemory) return inMemory
+
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          const persistent = await getPersistent()
+          return persistent.backend ? await persistent.backend.getPhoto(id) : null
+        } catch {
+          // A dropped connection reopens on the second attempt.
+        }
+      }
+      return null
+    },
+
+    /** Deletes photos a session transition no longer references. */
+    deletePhotos(ids: string[]): Promise<boolean> {
+      if (ids.length === 0) return Promise.resolve(true)
+      return serial(async () => {
+        const { list, reachable } = await backends()
+        let complete = reachable
+        for (const backend of list) {
+          await backend.deletePhotos(ids).catch(() => {
+            complete = false
+          })
+        }
+        return complete
+      })
+    },
+
+    /** Heartbeat that keeps other tabs' garbage collection away from this session. */
+    touchSession(sessionId: string): Promise<void> {
+      const at = now()
+      if (at - (lastTouchAt.get(sessionId) ?? -Infinity) < TOUCH_INTERVAL_MS) return Promise.resolve()
+      lastTouchAt.set(sessionId, at)
+      return serial(async () => {
+        for (const backend of (await backends()).list) {
+          await backend.touchSession(sessionId, at).catch(() => undefined)
+        }
+      })
+    },
+
+    /**
+     * Deletes every photo of the session (reset or expiry). `complete` is false
+     * when some storage could not be reached; the session is still marked ended
+     * where possible, so a later garbage collection finishes the job.
+     */
+    endSession(sessionId: string): Promise<{ complete: boolean }> {
+      lastTouchAt.delete(sessionId)
+      return serial(async () => {
+        const { list, reachable } = await backends()
+        let complete = reachable
+        for (const backend of list) {
+          try {
+            await backend.markSessionEnded(sessionId, now())
+          } catch {
+            // Collection below may still succeed; if not, the abandoned cutoff applies.
+          }
+          try {
+            await backend.collectSession(sessionId, () => ({ keepRecord: true }))
+          } catch {
+            complete = false
+          }
+        }
+        return { complete }
+      })
+    },
+
+    /**
+     * Removes ended and abandoned sessions, never the protected ones (this tab's
+     * session). Calls made while a run is still queued are merged into it.
+     */
+    collectGarbage(protectedIds: string[] = []): Promise<void> {
+      if (gcRequest) {
+        protectedIds.forEach((id) => gcRequest?.protectedIds.add(id))
+        return gcRequest.done
+      }
+      const request = { protectedIds: new Set(protectedIds), done: Promise.resolve() }
+      request.done = serial(() => {
+        if (gcRequest === request) gcRequest = null
+        return collectNow(request.protectedIds)
+      })
+      gcRequest = request
+      return request.done
+    },
+
+    /** Probes storage once so screens can warn before the first photo is taken. */
+    async getStatus(): Promise<PhotoStoreStatus> {
+      const persistent = await getPersistent()
+      if (!persistent.backend) degrade(persistent.reason === 'unsupported' ? 'unavailable' : 'error')
+      return status
+    },
+
+    /** Synchronous view of the last known status. */
+    peekStatus(): PhotoStoreStatus {
+      return status
+    },
+  }
 }
 
-/** Whether every saved photo survives a full page reload. */
+export type PhotoStore = ReturnType<typeof createPhotoStore>
+
+const store = createPhotoStore({ openPersistent: openIndexedDbBackend, orphanCutoffMs: getOrphanCutoffMs })
+
+export const savePhoto = store.savePhoto
+export const loadPhoto = store.loadPhoto
+export const deletePhotos = store.deletePhotos
+export const touchSession = store.touchSession
+export const endSession = store.endSession
+export const collectGarbage = store.collectGarbage
+export const getPhotoStoreStatus = store.getStatus
+
+/** Whether every photo saved so far survives a full page reload. */
 export function isPhotoStorePersistent() {
-  return isPersistent
-}
-
-export async function loadPhoto(id: string): Promise<Blob | null> {
-  const inMemory = memoryStore.get(id)
-  if (inMemory) return inMemory.blob
-
-  try {
-    const stored = await withStore<StoredPhoto | undefined>('readonly', (store) => store.get(id))
-    return stored?.value?.blob ?? null
-  } catch {
-    databasePromise = null
-    return null
-  }
-}
-
-async function listPhotos(): Promise<StoredPhoto[]> {
-  const stored = await withStore<StoredPhoto[]>('readonly', (store) => store.getAll())
-  return [...(stored?.value ?? []), ...memoryStore.values()]
-}
-
-async function deletePhotos(ids: string[]) {
-  for (const id of ids) {
-    memoryStore.delete(id)
-    await withStore('readwrite', (store) => store.delete(id))
-  }
-}
-
-/**
- * Deletes photos this session no longer references (replaced retakes, cancelled
- * drafts) and photos abandoned by older sessions. Other recent sessions are kept
- * so a second tab is not wiped.
- */
-export async function prunePhotos(sessionId: string, referencedIds: string[]) {
-  const keep = new Set(referencedIds)
-  const cutoff = Date.now() - ABANDONED_AFTER_MS
-  const photos = await listPhotos()
-  await deletePhotos(
-    photos
-      .filter((photo) =>
-        photo.sessionId === sessionId ? !keep.has(photo.id) : photo.createdAt < cutoff
-      )
-      .map((photo) => photo.id)
-  )
-}
-
-export async function deleteSessionPhotos(sessionId: string) {
-  const photos = await listPhotos()
-  await deletePhotos(photos.filter((photo) => photo.sessionId === sessionId).map((photo) => photo.id))
+  return store.peekStatus().persistent
 }

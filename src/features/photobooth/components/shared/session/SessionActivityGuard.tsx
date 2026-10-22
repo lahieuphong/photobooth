@@ -1,0 +1,192 @@
+'use client'
+
+import { Clock, X } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
+import Button from '@/src/features/photobooth/components/shared/controls/Button'
+import Spinner from '@/src/features/photobooth/components/shared/feedback/Spinner'
+import { getKioskSettings, rememberKioskParam, type KioskSettings } from '@/src/features/photobooth/config/kiosk'
+import { PHOTOBOOTH_ROUTES } from '@/src/features/photobooth/config/routes'
+import { getIdlePhase, type IdlePhase } from '@/src/features/photobooth/domain/inactivity'
+import {
+  getLastActivityAt,
+  isBusy,
+  recordActivity,
+  resetActivity,
+} from '@/src/features/photobooth/services/session/activity'
+import { collectGarbage, endSession, touchSession } from '@/src/features/photobooth/services/storage/photoStore'
+import { releaseSession } from '@/src/features/photobooth/services/storage/sessionOwnership'
+import { clearStoredSession, readStoredSession } from '@/src/features/photobooth/services/storage/sessionStorage'
+
+const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const
+const HEARTBEAT_MS = 60_000
+const KIOSK_GC_MS = 5 * 60_000
+const TOAST_MS = 10_000
+
+function currentSessionId() {
+  return readStoredSession().session?.id ?? null
+}
+
+/**
+ * Mounted once in the root layout. On every device it records real user
+ * activity and keeps the session's storage record alive, which is what
+ * protects an open tab from other tabs' garbage collection. Only in kiosk
+ * mode does inactivity end the session: a visible warning first, never while
+ * a capture or export is running, then every photo of the session is deleted.
+ */
+export default function SessionActivityGuard() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const [settings, setSettings] = useState<KioskSettings>({ enabled: false })
+  const [phase, setPhase] = useState<IdlePhase>({ phase: 'active' })
+  const [isExpiring, setIsExpiring] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+  const expiringRef = useRef(false)
+
+  useEffect(() => {
+    rememberKioskParam(window.location.search)
+    setSettings(getKioskSettings())
+  }, [])
+
+  useEffect(() => {
+    let lastHeartbeatAt = 0
+    function handleActivity() {
+      const now = Date.now()
+      recordActivity(now)
+      if (now - lastHeartbeatAt < HEARTBEAT_MS) return
+      lastHeartbeatAt = now
+      const sessionId = currentSessionId()
+      if (sessionId) void touchSession(sessionId)
+    }
+
+    ACTIVITY_EVENTS.forEach((type) => window.addEventListener(type, handleActivity, { capture: true, passive: true }))
+    return () => ACTIVITY_EVENTS.forEach((type) => window.removeEventListener(type, handleActivity, { capture: true }))
+  }, [])
+
+  const route = pathname.replace(/\/+$/, '') || PHOTOBOOTH_ROUTES.HOME
+  const isCover = route === PHOTOBOOTH_ROUTES.WELCOME || route === PHOTOBOOTH_ROUTES.HOME
+
+  useEffect(() => {
+    if (!settings.enabled) return
+    const { idleTimeoutMs, warningMs } = settings
+
+    async function expire() {
+      expiringRef.current = true
+      // Cover the screen before anything else so the next visitor never sees the photos.
+      setIsExpiring(true)
+      try {
+        const session = readStoredSession().session
+        if (session) {
+          const { complete } = await endSession(session.id).catch(() => ({ complete: false }))
+          releaseSession(session.id)
+          clearStoredSession()
+          setToast(
+            complete
+              ? 'Phiên trước đã kết thúc vì không có thao tác. Ảnh của phiên đó đã được xóa khỏi máy.'
+              : 'Phiên trước đã kết thúc vì không có thao tác, nhưng một số ảnh chưa xóa được khỏi bộ nhớ trình duyệt. Hệ thống sẽ thử xóa lại.'
+          )
+        }
+        resetActivity()
+        setPhase({ phase: 'active' })
+        // Already on the cover: no navigation will happen to lift the privacy screen.
+        if (isCover) setIsExpiring(false)
+        else router.replace(PHOTOBOOTH_ROUTES.WELCOME)
+      } finally {
+        expiringRef.current = false
+      }
+    }
+
+    function tick() {
+      if (expiringRef.current) return
+      const hasSession = currentSessionId() !== null
+      if (!hasSession && isCover) {
+        setPhase({ phase: 'active' })
+        return
+      }
+
+      const next = getIdlePhase({
+        now: Date.now(),
+        lastActivityAt: getLastActivityAt(),
+        busy: isBusy(),
+        idleTimeoutMs,
+        warningMs,
+      })
+      // Without a session there is nothing to warn about; just return to the cover.
+      setPhase(hasSession ? next : { phase: 'active' })
+      if (next.phase === 'expired') void expire()
+    }
+
+    tick()
+    const ticker = window.setInterval(tick, 1000)
+    const collector = window.setInterval(() => {
+      const sessionId = currentSessionId()
+      void collectGarbage(sessionId ? [sessionId] : [])
+    }, KIOSK_GC_MS)
+    return () => {
+      window.clearInterval(ticker)
+      window.clearInterval(collector)
+    }
+  }, [settings, isCover, router])
+
+  // The cover stays until the Welcome screen is actually shown.
+  useEffect(() => {
+    if (isCover) setIsExpiring(false)
+  }, [isCover])
+
+  useEffect(() => {
+    if (!toast) return
+    const timer = window.setTimeout(() => setToast(null), TOAST_MS)
+    return () => window.clearTimeout(timer)
+  }, [toast])
+
+  return (
+    <>
+      {isExpiring ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-paper">
+          <Spinner label="Đang kết thúc phiên…" />
+        </div>
+      ) : null}
+
+      {phase.phase === 'warning' && !isExpiring ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+          <div
+            role="alertdialog"
+            aria-labelledby="idle-warning-title"
+            aria-describedby="idle-warning-body"
+            className="pointer-events-auto flex w-full max-w-[460px] flex-col gap-3 rounded-[20px] border border-line bg-white p-4 shadow-[0_18px_40px_rgba(26,23,20,0.16)] sm:flex-row sm:items-center"
+          >
+            <Clock aria-hidden="true" size={22} className="shrink-0 text-accent" />
+            <div className="min-w-0 flex-1">
+              <p id="idle-warning-title" className="text-[14px] font-semibold">
+                Bạn vẫn đang dùng chứ?
+              </p>
+              <p id="idle-warning-body" className="text-[13px] leading-snug text-ink-soft" aria-live="polite">
+                Phiên sẽ tự kết thúc sau {Math.ceil(phase.remainingMs / 1000)} giây và ảnh sẽ bị xóa khỏi máy.
+              </p>
+            </div>
+            <Button onClick={() => recordActivity()}>Tiếp tục phiên</Button>
+          </div>
+        </div>
+      ) : null}
+
+      {toast ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+          <div
+            role="status"
+            className="pointer-events-auto flex w-full max-w-[460px] items-start gap-3 rounded-[20px] border border-line bg-white p-4 shadow-[0_18px_40px_rgba(26,23,20,0.16)]"
+          >
+            <p className="min-w-0 flex-1 text-[13px] leading-snug text-ink-soft">{toast}</p>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              aria-label="Đóng thông báo"
+              className="-m-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full hover:bg-paper-deep"
+            >
+              <X aria-hidden="true" size={16} />
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </>
+  )
+}

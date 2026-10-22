@@ -4,17 +4,20 @@ import { ArrowRight, RotateCcw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Button from '@/src/features/photobooth/components/shared/controls/Button'
+import MissingPhotosNotice from '@/src/features/photobooth/components/shared/feedback/MissingPhotosNotice'
 import Spinner from '@/src/features/photobooth/components/shared/feedback/Spinner'
 import ScreenHeader from '@/src/features/photobooth/components/shared/layout/ScreenHeader'
 import ScreenShell from '@/src/features/photobooth/components/shared/layout/ScreenShell'
-import { PHOTOBOOTH_ROUTES } from '@/src/features/photobooth/config/routes'
+import { PHOTOBOOTH_ROUTES, type PhotoboothRoute } from '@/src/features/photobooth/config/routes'
 import { PHOTOBOOTH_SCREENS } from '@/src/features/photobooth/config/screenState'
 import { getLayout } from '@/src/features/photobooth/domain/layouts'
 import { getLook, toCssFilter } from '@/src/features/photobooth/domain/looks'
+import { getResumeRoute } from '@/src/features/photobooth/domain/routeGuard'
 import {
   cancelRetake,
   commitRetake,
   enterStudio,
+  releaseMissingShots,
   startRetake,
 } from '@/src/features/photobooth/domain/session'
 import { usePhotoboothSession } from '@/src/features/photobooth/hooks/usePhotoboothSession'
@@ -26,10 +29,11 @@ const pad = (value: number) => String(value).padStart(2, '0')
 
 export default function ReviewScreen() {
   const router = useRouter()
-  const { session, isLoaded, update } = usePhotoboothSession(PHOTOBOOTH_ROUTES.REVIEW)
+  const { session, isLoaded, apply, actionError } = usePhotoboothSession(PHOTOBOOTH_ROUTES.REVIEW)
   const draftId = session?.retake?.draftPhotoId ?? null
-  const { urls, isLoading } = usePhotoUrls(session ? [...session.shots, draftId] : [])
+  const { urls, isLoading, missingIds } = usePhotoUrls(session ? [...session.shots, draftId] : [])
   const [openIndex, setOpenIndex] = useState<number | null>(null)
+  const [isLeaving, setIsLeaving] = useState(false)
 
   if (!isLoaded || !session) {
     return (
@@ -51,14 +55,31 @@ export default function ReviewScreen() {
     return `${slot.width} / ${slot.height}`
   }
 
+  const hasMissing = missingIds.length > 0
+  const isDraftReady = Boolean(retake?.draftPhotoId && draftUrl)
+
+  function go(route: PhotoboothRoute) {
+    setIsLeaving(true)
+    router.push(route, { scroll: false })
+  }
+
   function handleRetake(shotIndex: number) {
-    update((current, now) => startRetake(current, shotIndex, now))
-    router.push(PHOTOBOOTH_ROUTES.CAPTURE, { scroll: false })
+    if (isLeaving || !apply((current, now) => startRetake(current, shotIndex, now))) return
+    go(PHOTOBOOTH_ROUTES.CAPTURE)
   }
 
   function handleContinue() {
-    update((current, now) => enterStudio(current, now))
-    router.push(PHOTOBOOTH_ROUTES.STUDIO, { scroll: false })
+    if (isLeaving || isLoading || hasMissing) return
+    if (apply((current, now) => enterStudio(current, now))) go(PHOTOBOOTH_ROUTES.STUDIO)
+  }
+
+  function handleRecover() {
+    if (isLeaving) return
+    const next = apply((current, now) => releaseMissingShots(current, missingIds, now), { deleteDropped: false })
+    if (!next) return
+    setOpenIndex(null)
+    const route = getResumeRoute(next)
+    if (route !== PHOTOBOOTH_ROUTES.REVIEW) go(route)
   }
 
   return (
@@ -72,11 +93,22 @@ export default function ReviewScreen() {
         <p className="mt-1.5 text-[14px] text-ink-soft">
           {retake
             ? retake.draftPhotoId
-              ? 'So sánh hai ảnh rồi chọn ảnh bạn muốn giữ trong bản in.'
+              ? 'So sánh hai ảnh rồi chọn ảnh bạn muốn giữ trong ảnh hoàn chỉnh.'
               : 'Bạn đang chụp lại ảnh này. Tiếp tục chụp hoặc hủy để giữ ảnh cũ.'
             : 'Chạm vào một ảnh để xem lớn hoặc chụp lại riêng ảnh đó.'}
         </p>
       </div>
+
+      {hasMissing ? (
+        <div className="mt-3">
+          <MissingPhotosNotice count={missingIds.length} onRecover={handleRecover} disabled={isLeaving} />
+        </div>
+      ) : null}
+      {actionError ? (
+        <p role="alert" className="mt-2 shrink-0 text-[13px] text-danger">
+          {actionError}
+        </p>
+      ) : null}
 
       {retake ? (
         <section className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
@@ -89,6 +121,8 @@ export default function ReviewScreen() {
                 <div className="relative min-h-0 flex-1 overflow-hidden rounded-[16px] bg-paper-deep">
                   {item.label === 'Ảnh mới' && !retake.draftPhotoId ? (
                     <span className="absolute inset-0 flex items-center justify-center text-[13px] text-muted">Chưa chụp</span>
+                  ) : isLoading && !item.url ? (
+                    <Spinner className="absolute inset-0" />
                   ) : (
                     <ShotImage url={item.url} filter={filter} fit="contain" sizes="45vw" />
                   )}
@@ -101,13 +135,15 @@ export default function ReviewScreen() {
           </div>
 
           <div className="flex shrink-0 flex-wrap justify-center gap-2">
-            <Button variant="secondary" onClick={() => update((current, now) => cancelRetake(current, now))}>
+            <Button variant="secondary" onClick={() => apply((current, now) => cancelRetake(current, now))} disabled={isLeaving}>
               Giữ ảnh hiện tại
             </Button>
             {retake.draftPhotoId ? (
-              <Button onClick={() => update((current, now) => commitRetake(current, now))}>Dùng ảnh mới</Button>
+              <Button onClick={() => apply((current, now) => commitRetake(current, now))} disabled={isLeaving || !isDraftReady}>
+                Dùng ảnh mới
+              </Button>
             ) : (
-              <Button onClick={() => router.push(PHOTOBOOTH_ROUTES.CAPTURE, { scroll: false })}>
+              <Button onClick={() => go(PHOTOBOOTH_ROUTES.CAPTURE)} disabled={isLeaving}>
                 <RotateCcw aria-hidden="true" size={16} />
                 Tiếp tục chụp lại
               </Button>
@@ -147,7 +183,7 @@ export default function ReviewScreen() {
             <p className="text-[13px] text-ink-soft">
               {session.shotCount} ảnh · {layout.label}
             </p>
-            <Button onClick={handleContinue} size="lg">
+            <Button onClick={handleContinue} disabled={isLeaving || isLoading || hasMissing} size="lg">
               Vào Studio
               <ArrowRight aria-hidden="true" size={18} />
             </Button>

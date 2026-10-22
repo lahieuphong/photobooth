@@ -44,6 +44,10 @@ async function captureVideoFrame(video: HTMLVideoElement | null, { mirror }: Cap
     return await canvasToBlob(canvas, 'image/jpeg', CAPTURE_JPEG_QUALITY)
   } catch {
     return null
+  } finally {
+    // Release the backing store now; iOS limits total canvas memory per page.
+    canvas.width = 0
+    canvas.height = 0
   }
 }
 

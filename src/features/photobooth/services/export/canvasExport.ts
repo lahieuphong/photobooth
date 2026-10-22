@@ -2,7 +2,7 @@ import { getFrame, getFrameOverlayUrl, type PhotoboothFrameId } from '@/src/feat
 import {
   PRINT_HEIGHT,
   PRINT_WIDTH,
-  computeCoverCrop,
+  planSlotDraws,
   type PhotoboothLayout,
 } from '@/src/features/photobooth/domain/layouts'
 import { applyLookToPixels, getLook, toCssFilter, type PhotoboothLookId } from '@/src/features/photobooth/domain/looks'
@@ -67,10 +67,13 @@ export async function renderCompositionPng({
   layout: PhotoboothLayout
   frameId: PhotoboothFrameId
   lookId: PhotoboothLookId
-  shots: string[]
+  /** Photo ids by shot index; every shot of the layout must be present. */
+  shots: ReadonlyArray<string | null>
   dateLabel: string
 }): Promise<Blob> {
-  const blobs = await Promise.all(shots.map((id) => loadPhoto(id)))
+  // Index by shot, never compact the list: a gap would shift every later photo into the wrong slot.
+  if (shots.length !== layout.shotCount || shots.some((id) => id === null)) throw new Error('PHOTO_MISSING')
+  const blobs = await Promise.all(shots.map((id) => loadPhoto(id as string)))
   if (blobs.some((blob) => blob === null)) throw new Error('PHOTO_MISSING')
 
   const decoded = await Promise.allSettled((blobs as Blob[]).map(decodeBlob))
@@ -80,8 +83,8 @@ export async function renderCompositionPng({
     throw new Error('PHOTO_DECODE_FAILED')
   }
 
+  const canvas = document.createElement('canvas')
   try {
-    const canvas = document.createElement('canvas')
     canvas.width = Math.round(PRINT_WIDTH * EXPORT_SCALE)
     canvas.height = Math.round(PRINT_HEIGHT * EXPORT_SCALE)
 
@@ -94,13 +97,9 @@ export async function renderCompositionPng({
     const look = getLook(lookId)
     const useCanvasFilter = supportsCanvasFilter()
 
-    for (const slot of layout.slots) {
-      const image = images[slot.shotIndex]
-      const crop = computeCoverCrop(image.width, image.height, slot.width, slot.height)
-      const x = Math.round(slot.x * EXPORT_SCALE)
-      const y = Math.round(slot.y * EXPORT_SCALE)
-      const width = Math.round((slot.x + slot.width) * EXPORT_SCALE) - x
-      const height = Math.round((slot.y + slot.height) * EXPORT_SCALE) - y
+    for (const { shotIndex, crop, dest } of planSlotDraws(layout, images, EXPORT_SCALE)) {
+      const image = images[shotIndex]
+      const { x, y, width, height } = dest
 
       context.save()
       context.filter = useCanvasFilter ? toCssFilter(look) : 'none'
@@ -125,6 +124,9 @@ export async function renderCompositionPng({
     return png
   } finally {
     images.forEach((image) => image.close())
+    // iOS caps total canvas memory; a zero-sized canvas releases its backing store at once.
+    canvas.width = 0
+    canvas.height = 0
   }
 }
 

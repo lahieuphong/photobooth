@@ -2,6 +2,7 @@
 
 import { Camera } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import CameraViewport from '@/src/features/photobooth/components/shared/camera/CameraViewport'
@@ -23,18 +24,30 @@ import {
   getShotsPerPress,
   isCaptureComplete,
   recordShot,
+  releaseMissingShots,
   setRetakeDraft,
 } from '@/src/features/photobooth/domain/session'
 import { useCamera } from '@/src/features/photobooth/hooks/useCamera'
 import { usePhotoboothSession } from '@/src/features/photobooth/hooks/usePhotoboothSession'
 import { usePhotoUrls } from '@/src/features/photobooth/hooks/usePhotoUrls'
 import { captureVideoFrameWithRetry } from '@/src/features/photobooth/services/camera/captureFrame'
-import { isPhotoStorePersistent, savePhoto } from '@/src/features/photobooth/services/storage/photoStore'
+import { beginBusy } from '@/src/features/photobooth/services/session/activity'
+import {
+  deletePhotos,
+  getPhotoStoreStatus,
+  isPhotoStorePersistent,
+  savePhoto,
+} from '@/src/features/photobooth/services/storage/photoStore'
 import { readStoredSession } from '@/src/features/photobooth/services/storage/sessionStorage'
 import { navigateWithFallback } from '@/src/features/photobooth/utils/navigation'
 
+/** Marks a run that was cancelled or whose screen went away; not an error to show. */
+class CaptureAborted extends Error {}
+
 /** Pause between timed shots so people can read the next pose prompt. */
 const BETWEEN_SHOTS_MS = 900
+/** After this, a navigation that has not happened yet gets a manual link. */
+const STUCK_NAVIGATION_MS = 2500
 
 const pad = (value: number) => String(value).padStart(2, '0')
 
@@ -49,8 +62,8 @@ function describeCaptureError(error: unknown) {
   if (error instanceof Error && error.message === 'CAMERA_LOST') {
     return 'Camera vừa bị ngắt nên đã dừng chụp. Ảnh đã chụp vẫn được giữ.'
   }
-  if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-    return 'Không lưu được ảnh vì bộ nhớ trình duyệt đã đầy.'
+  if (error instanceof Error && error.message === 'CAPTURE_HIDDEN') {
+    return 'Đã tạm dừng chụp vì màn hình bị ẩn. Ảnh đã chụp vẫn được giữ — bấm chụp để tiếp tục.'
   }
   if (error instanceof PhotoboothSessionError) {
     return 'Phiên chụp đã thay đổi ở nơi khác. Hãy tải lại trang.'
@@ -60,17 +73,23 @@ function describeCaptureError(error: unknown) {
 
 export default function CaptureScreen() {
   const router = useRouter()
-  const { session, isLoaded, update } = usePhotoboothSession(PHOTOBOOTH_ROUTES.CAPTURE)
+  const { session, isLoaded, update, apply, actionError } = usePhotoboothSession(PHOTOBOOTH_ROUTES.CAPTURE)
   const camera = useCamera(isLoaded)
-  const { urls } = usePhotoUrls(session?.shots ?? [])
+  const { urls, isLoading: isLoadingPhotos, missingIds } = usePhotoUrls(session?.shots ?? [])
   const [countdownValue, setCountdownValue] = useState<number | null>(null)
   const [isBusy, setIsBusy] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [flashKey, setFlashKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [recoveredCount, setRecoveredCount] = useState(0)
+  const [isMemoryOnly, setIsMemoryOnly] = useState(false)
+  const [leavingTo, setLeavingTo] = useState<PhotoboothRoute | null>(null)
+  const [isNavigationStuck, setIsNavigationStuck] = useState(false)
   const lockRef = useRef(false)
   const leavingRef = useRef(false)
   const aliveRef = useRef(true)
+  /** The running press; cancelling it stops the loop and discards a photo still being saved. */
+  const runRef = useRef<{ cancelled: boolean } | null>(null)
   const isCameraReady = camera.state.status === 'ready'
   // Read inside the capture loop: a camera that drops mid-sequence must stop it.
   const cameraReadyRef = useRef(isCameraReady)
@@ -87,10 +106,32 @@ export default function CaptureScreen() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!isLoaded) return
+    void getPhotoStoreStatus().then((status) => setIsMemoryOnly(!status.persistent))
+  }, [isLoaded])
+
+  // Earlier shots whose photo is gone (reload with memory-only storage) are
+  // simply taken again: their slots become empty and the shutter fills them.
+  const missingKey = missingIds.join('|')
+  useEffect(() => {
+    if (isBusy || isLoadingPhotos || !missingKey) return
+    const missing = missingKey.split('|')
+    const next = apply((current, now) => releaseMissingShots(current, missing, now), { deleteDropped: false })
+    if (next) setRecoveredCount((count) => count + missing.length)
+  }, [apply, isBusy, isLoadingPhotos, missingKey])
+
+  useEffect(() => {
+    if (!leavingTo) return
+    const timer = window.setTimeout(() => setIsNavigationStuck(true), STUCK_NAVIGATION_MS)
+    return () => window.clearTimeout(timer)
+  }, [leavingTo])
+
   const leave = useCallback(
     (to: PhotoboothRoute) => {
       leavingRef.current = true
       lockRef.current = true
+      setLeavingTo(to)
       navigateWithFallback(router, to, PHOTOBOOTH_ROUTES.CAPTURE, {
         allowHardNavigation: isPhotoStorePersistent(),
       })
@@ -99,21 +140,30 @@ export default function CaptureScreen() {
   )
 
   const runCapture = useCallback(async () => {
-    if (lockRef.current || !isCameraReady) return
+    if (lockRef.current || !cameraReadyRef.current) return
 
     const initial = readStoredSession().session
-    if (!initial) return
+    const firstTarget = initial ? getCaptureTarget(initial) : null
+    if (!initial || !firstTarget) return
 
     lockRef.current = true
+    const run = { cancelled: false }
+    runRef.current = run
+    const endBusy = beginBusy()
     setIsBusy(true)
     setError(null)
 
-    const isRetake = initial.retake !== null
+    const { isRetake } = firstTarget
     const { countdown } = initial
     const plannedShots = getShotsPerPress(initial)
+    const checkpoint = () => {
+      if (run.cancelled || !aliveRef.current) throw new CaptureAborted()
+      if (document.visibilityState === 'hidden') throw new Error('CAPTURE_HIDDEN')
+      if (!cameraReadyRef.current) throw new Error('CAMERA_LOST')
+    }
 
     try {
-      for (let shotsThisRun = 0; shotsThisRun < plannedShots && aliveRef.current; shotsThisRun += 1) {
+      for (let shotsThisRun = 0; shotsThisRun < plannedShots; shotsThisRun += 1) {
         const latest = readStoredSession().session
         if (!latest) throw new PhotoboothSessionError('session missing')
 
@@ -123,34 +173,44 @@ export default function CaptureScreen() {
 
         if (shotsThisRun > 0) {
           await wait(BETWEEN_SHOTS_MS)
-          if (!aliveRef.current) return
+          checkpoint()
         }
 
         for (let value = countdown; value >= 1; value -= 1) {
-          if (!cameraReadyRef.current) throw new Error('CAMERA_LOST')
+          checkpoint()
           setCountdownValue(value)
           await wait(1000)
-          if (!aliveRef.current) return
         }
-        if (!cameraReadyRef.current) throw new Error('CAMERA_LOST')
+        checkpoint()
         setCountdownValue(null)
         setIsSaving(true)
 
         const blob = await captureVideoFrameWithRetry(camera.videoRef.current, { mirror: camera.mirrored })
         if (!blob) throw new Error('CAPTURE_FRAME_FAILED')
+        if (run.cancelled) throw new CaptureAborted()
         setFlashKey((value) => value + 1)
 
-        // The photo is durably stored before the session points at it; an
-        // interrupted write leaves an orphan that the next prune removes.
+        // The photo is stored before the session points at it. The shot was
+        // taken (and flashed), so it is attached even if the screen unmounted
+        // meanwhile; only an explicit cancel drops it. A photo that cannot be
+        // attached is deleted right away instead of lingering as an orphan.
         const photoId = await savePhoto(latest.id, blob)
-        if (!aliveRef.current) return
-
-        update((current, now) =>
-          isRetake ? setRetakeDraft(current, photoId, now) : recordShot(current, shotIndex, photoId, now)
-        )
-        setIsSaving(false)
+        try {
+          if (run.cancelled) throw new CaptureAborted()
+          update((current, now) =>
+            isRetake ? setRetakeDraft(current, photoId, now) : recordShot(current, shotIndex, photoId, now)
+          )
+        } catch (attachError) {
+          void deletePhotos([photoId])
+          throw attachError
+        }
+        if (aliveRef.current) {
+          setIsSaving(false)
+          setIsMemoryOnly(!isPhotoStorePersistent())
+        }
       }
 
+      if (!aliveRef.current || run.cancelled) return
       const finished = readStoredSession().session
       if (!finished) throw new PhotoboothSessionError('session missing')
 
@@ -161,8 +221,10 @@ export default function CaptureScreen() {
         leave(PHOTOBOOTH_ROUTES.REVIEW)
       }
     } catch (captureError) {
-      if (aliveRef.current) setError(describeCaptureError(captureError))
+      if (aliveRef.current && !(captureError instanceof CaptureAborted)) setError(describeCaptureError(captureError))
     } finally {
+      endBusy()
+      if (runRef.current === run) runRef.current = null
       if (aliveRef.current) {
         setCountdownValue(null)
         setIsSaving(false)
@@ -172,13 +234,13 @@ export default function CaptureScreen() {
         }
       }
     }
-  }, [camera.mirrored, camera.videoRef, isCameraReady, leave, update])
+  }, [camera.mirrored, camera.videoRef, leave, update])
 
   // Space / Enter act as the shutter for kiosks with a physical button or keyboard.
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.repeat || (event.code !== 'Space' && event.code !== 'Enter')) return
-      if (event.target instanceof HTMLElement && event.target.closest('button, a, input')) return
+      if (event.target instanceof HTMLElement && event.target.closest('button, a, input, dialog')) return
       event.preventDefault()
       void runCapture()
     }
@@ -189,10 +251,10 @@ export default function CaptureScreen() {
 
   function handleCancelRetake() {
     if (leavingRef.current) return
-    // Stops a running countdown at its next checkpoint; a photo saved in flight
-    // is never attached to the session and gets pruned.
-    aliveRef.current = false
-    update((current, now) => cancelRetake(current, now))
+    // Stops a running countdown at its next checkpoint; a draft still being
+    // saved is discarded instead of attached.
+    if (runRef.current) runRef.current.cancelled = true
+    if (!apply((current, now) => cancelRetake(current, now))) return
     leave(PHOTOBOOTH_ROUTES.REVIEW)
   }
 
@@ -218,6 +280,11 @@ export default function CaptureScreen() {
     : isTimed
       ? `Hẹn giờ ${session.countdown} giây · máy tự chụp các ảnh còn lại`
       : 'Bấm nút (hoặc phím cách) cho mỗi ảnh'
+  const message = error ?? actionError
+  const notes = [
+    recoveredCount > 0 ? `${recoveredCount} ảnh trước không còn trên máy này nên sẽ được chụp bù.` : null,
+    isMemoryOnly ? 'Trình duyệt chỉ giữ ảnh tạm trong tab này — đừng tải lại trang trước khi tải ảnh về.' : null,
+  ].filter(Boolean)
 
   return (
     <ScreenShell>
@@ -307,10 +374,20 @@ export default function CaptureScreen() {
             >
               <Camera aria-hidden="true" size={30} strokeWidth={1.8} />
             </button>
-            <p className="text-[14px] font-semibold">{isBusy ? 'Đang chụp…' : shutterLabel}</p>
-            <p role={error ? 'alert' : undefined} className={`text-center text-[12px] ${error ? 'text-danger' : 'text-muted'}`}>
-              {error ?? hint}
+            <p className="text-[14px] font-semibold">{leavingTo ? 'Đang chuyển…' : isBusy ? 'Đang chụp…' : shutterLabel}</p>
+            <p role={message ? 'alert' : undefined} className={`text-center text-[12px] ${message ? 'text-danger' : 'text-muted'}`}>
+              {message ?? hint}
             </p>
+            {notes.map((note) => (
+              <p key={note} className="text-center text-[12px] text-ink-soft">
+                {note}
+              </p>
+            ))}
+            {leavingTo && isNavigationStuck ? (
+              <Link href={leavingTo} scroll={false} className="text-[13px] font-semibold text-ink underline underline-offset-2">
+                Tiếp tục tới bước Xem lại
+              </Link>
+            ) : null}
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 import { Be_Vietnam_Pro, Newsreader } from 'next/font/google'
+import SessionActivityGuard from '@/src/features/photobooth/components/shared/session/SessionActivityGuard'
 import { getAssetPath } from '@/src/features/photobooth/utils/assetPath'
 import './globals.css'
 
@@ -83,6 +84,7 @@ export default function RootLayout({
           `}
         </Script>
         {children}
+        <SessionActivityGuard />
       </body>
     </html>
   )

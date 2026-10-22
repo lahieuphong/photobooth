@@ -13,7 +13,8 @@ const POLL_MS = 100
  *
  * The fallback is cancelled the moment the URL leaves `from`, so a user who
  * quickly comes back to `from` is never yanked away by a stale timer. Pass
- * `allowHardNavigation: false` when a full reload would lose in-memory data.
+ * `allowHardNavigation: false` when a full reload would lose in-memory data;
+ * the client navigation is then retried once instead.
  */
 export function navigateWithFallback(
   router: PushRouter,
@@ -22,7 +23,6 @@ export function navigateWithFallback(
   { allowHardNavigation = true }: { allowHardNavigation?: boolean } = {}
 ) {
   router.push(to, { scroll: false })
-  if (!allowHardNavigation) return
 
   const startedAt = Date.now()
   const timer = window.setInterval(() => {
@@ -32,7 +32,8 @@ export function navigateWithFallback(
       window.clearInterval(timer)
     } else if (Date.now() - startedAt >= FALLBACK_AFTER_MS) {
       window.clearInterval(timer)
-      window.location.assign(getAssetPath(`${to}/`))
+      if (allowHardNavigation) window.location.assign(getAssetPath(`${to}/`))
+      else router.push(to, { scroll: false })
     }
   }, POLL_MS)
 }

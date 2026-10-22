@@ -194,11 +194,51 @@ export function completeSession(session: PhotoboothSession, now: number) {
   return touch(session, { status: 'completed' }, now)
 }
 
-/** Every photo the session still needs; anything else in storage can be deleted. */
+/** Every photo the session still needs. */
 export function getReferencedPhotoIds(session: PhotoboothSession) {
   const ids = session.shots.filter((shot): shot is string => shot !== null)
   if (session.retake?.draftPhotoId) ids.push(session.retake.draftPhotoId)
   return ids
+}
+
+/**
+ * Photos a transition stopped referencing (a replaced original, a cancelled or
+ * replaced draft). Only these may be deleted after an update: they are computed
+ * from the two snapshots of one write, so a photo saved concurrently is never in it.
+ */
+export function getDroppedPhotoIds(previous: PhotoboothSession, next: PhotoboothSession) {
+  if (previous.id !== next.id) return []
+  const kept = new Set(getReferencedPhotoIds(next))
+  return getReferencedPhotoIds(previous).filter((id) => !kept.has(id))
+}
+
+/**
+ * Recovery when photos are gone from this device (reload with memory-only
+ * storage, cleared site data, undecodable blob). Missing shots become empty so
+ * the normal capture flow fills them again; every photo that still exists,
+ * plus the look, frame and layout, is kept. When a retake's original is gone
+ * but its draft exists, the draft simply takes the slot.
+ */
+export function releaseMissingShots(session: PhotoboothSession, missingIds: Iterable<string>, now: number) {
+  const missing = new Set(missingIds)
+  const isMissing = (id: string | null) => id !== null && missing.has(id)
+  const shots = session.shots.map((shot) => (isMissing(shot) ? null : shot))
+
+  let retake = session.retake
+  if (retake && shots[retake.shotIndex] === null) {
+    if (retake.draftPhotoId && !isMissing(retake.draftPhotoId)) shots[retake.shotIndex] = retake.draftPhotoId
+    retake = null
+  } else if (retake && isMissing(retake.draftPhotoId)) {
+    retake = { ...retake, draftPhotoId: null }
+  }
+
+  const changed = retake !== session.retake || shots.some((shot, index) => shot !== session.shots[index])
+  if (!changed) return session
+
+  const capturedCount = shots.filter((shot) => shot !== null).length
+  const status: PhotoboothSessionStatus =
+    capturedCount < session.shotCount ? (capturedCount > 0 ? 'capturing' : 'ready') : session.status
+  return touch(session, { shots, retake, status }, now)
 }
 
 export function getExperiencePrompt(session: PhotoboothSession, shotIndex: number) {

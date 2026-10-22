@@ -4,10 +4,12 @@ import { PHOTOBOOTH_FRAMES, buildFrameSvg, formatFrameDate } from '@/src/feature
 import {
   PHOTOBOOTH_LAYOUT_IDS,
   PRINT_CAPTION_TOP,
+  PRINT_HEIGHT,
   PRINT_WIDTH,
   computeCoverCrop,
   getCompatibleLayouts,
   getLayout,
+  planSlotDraws,
 } from '@/src/features/photobooth/domain/layouts'
 import { PHOTOBOOTH_LOOKS, applyLookToPixels, getLook, toCssFilter } from '@/src/features/photobooth/domain/looks'
 
@@ -58,6 +60,56 @@ describe('computeCoverCrop', () => {
     assert.equal(crop.sw, 1080)
     assert.ok(Math.abs(crop.sw / crop.sh - 477 / 320) < 1e-9)
     assert.ok(Math.abs(crop.sy - (1920 - crop.sh) / 2) < 1e-9)
+  })
+})
+
+describe('export draw plan', () => {
+  const EXPORT_SCALE = 1.5
+  const sources = [
+    { width: 1920, height: 1080 },
+    { width: 1080, height: 1920 },
+    { width: 1280, height: 720 },
+    { width: 1000, height: 1000 },
+    { width: 1920, height: 1080 },
+    { width: 640, height: 480 },
+  ]
+
+  for (const id of PHOTOBOOTH_LAYOUT_IDS) {
+    const layout = getLayout(id)
+    const plan = planSlotDraws(layout, sources, EXPORT_SCALE)
+
+    test(`${id}: every slot draws the shot it is assigned, in slot order`, () => {
+      assert.deepEqual(plan.map((draw) => draw.shotIndex), layout.slots.map((slot) => slot.shotIndex))
+    })
+
+    test(`${id}: photos are cover-cropped, never stretched or read outside the source`, () => {
+      for (const { shotIndex, crop, dest } of plan) {
+        const source = sources[shotIndex]
+        assert.ok(Math.abs(crop.sw / crop.sh - dest.width / dest.height) < 1e-9, 'same aspect as the box')
+        assert.ok(crop.sx >= 0 && crop.sy >= 0)
+        assert.ok(crop.sx + crop.sw <= source.width + 1e-9 && crop.sy + crop.sh <= source.height + 1e-9)
+        assert.ok(Math.abs(crop.sx - (source.width - crop.sw) / 2) < 1e-9, 'centered horizontally')
+        assert.ok(Math.abs(crop.sy - (source.height - crop.sh) / 2) < 1e-9, 'centered vertically')
+      }
+    })
+
+    test(`${id}: destination boxes are whole pixels inside the canvas and match the preview geometry`, () => {
+      plan.forEach(({ dest }, index) => {
+        const slot = layout.slots[index]
+        assert.ok([dest.x, dest.y, dest.width, dest.height].every(Number.isInteger))
+        assert.ok(dest.x >= 0 && dest.x + dest.width <= Math.round(PRINT_WIDTH * EXPORT_SCALE))
+        assert.ok(dest.y >= 0 && dest.y + dest.height <= Math.round(PRINT_HEIGHT * EXPORT_SCALE))
+        // The preview places slots by percentage of the same design size.
+        assert.ok(Math.abs(dest.x / EXPORT_SCALE - slot.x) <= 0.5 && Math.abs(dest.width / EXPORT_SCALE - slot.width) <= 1)
+      })
+    })
+  }
+
+  test('vertical-4 prints each shot twice, side by side', () => {
+    const plan = planSlotDraws(getLayout('vertical-4'), sources, EXPORT_SCALE)
+    const rows = new Map<number, number[]>()
+    for (const draw of plan) rows.set(draw.dest.y, [...(rows.get(draw.dest.y) ?? []), draw.shotIndex])
+    assert.deepEqual([...rows.values()], [[0, 0], [1, 1], [2, 2], [3, 3]])
   })
 })
 
