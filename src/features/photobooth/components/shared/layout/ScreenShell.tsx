@@ -1,26 +1,25 @@
-import React from 'react'
-import PhotoboothBackground, {
-  type PhotoboothBackgroundVariant,
-} from './Background'
+import type { ReactNode } from 'react'
 
-type PhotoboothScreenShellProps = {
-  children?: React.ReactNode
-  backgroundVariant?: PhotoboothBackgroundVariant
+type ScreenShellProps = {
+  children: ReactNode
+  className?: string
 }
 
-export default function PhotoboothScreenShell({
-  children,
-  backgroundVariant = 'plain',
-}: PhotoboothScreenShellProps) {
+/** Full-viewport frame with safe-area padding; every screen is a single non-scrolling column. */
+export default function ScreenShell({ children, className = '' }: ScreenShellProps) {
   return (
-    <main className="photobooth-screen-shell fixed inset-0 isolate w-full max-w-full overflow-hidden bg-white">
-      <section className="absolute inset-0 overflow-hidden bg-white">
-        <div className="h-full w-full">
-          <PhotoboothBackground variant={backgroundVariant}>
-            {children}
-          </PhotoboothBackground>
-        </div>
-      </section>
+    <main className="photobooth-screen-shell fixed inset-0 w-full overflow-hidden bg-paper text-ink">
+      <div
+        className={[
+          'mx-auto flex h-full min-h-0 w-full max-w-[1180px] flex-col',
+          'pt-[max(12px,env(safe-area-inset-top))] pb-[max(16px,env(safe-area-inset-bottom))]',
+          'pl-[max(16px,env(safe-area-inset-left))] pr-[max(16px,env(safe-area-inset-right))]',
+          'sm:pl-[max(32px,env(safe-area-inset-left))] sm:pr-[max(32px,env(safe-area-inset-right))]',
+          className,
+        ].join(' ')}
+      >
+        {children}
+      </div>
     </main>
   )
 }

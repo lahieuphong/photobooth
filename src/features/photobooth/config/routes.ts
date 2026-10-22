@@ -1,14 +1,12 @@
 export const PHOTOBOOTH_ROUTES = {
   HOME: '/',
-  WELCOME_LOADING: '/welcome',
   WELCOME: '/welcome',
-  PACKAGES: '/packages',
-  PAYMENT: '/payment',
-  LAYOUT: '/layout',
-  CUSTOMIZE: '/customize',
+  EXPERIENCE: '/experience',
+  READY: '/ready',
   CAPTURE: '/capture',
-  PREVIEW: '/preview',
-  FRAME: '/frame',
-  PRINT: '/print',
-  CAPTURED: '/captured',
+  REVIEW: '/review',
+  STUDIO: '/studio',
+  RESULT: '/result',
 } as const
+
+export type PhotoboothRoute = (typeof PHOTOBOOTH_ROUTES)[keyof typeof PHOTOBOOTH_ROUTES]

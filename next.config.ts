@@ -13,12 +13,6 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ['172.26.208.127', '*.trycloudflare.com'],
   images: {
     unoptimized: true,
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'img.vietqr.io',
-      },
-    ],
   },
   basePath,
   assetPrefix: basePath ? `${basePath}/` : '',

@@ -1,13 +1,13 @@
 {
   "name": "Photobooth",
   "short_name": "Photobooth",
-  "description": "Photobooth chụp ảnh lấy liền với nhiều bố cục, bộ lọc và khung ảnh",
-  "start_url": "./",
+  "description": "Chọn một trải nghiệm, chụp ảnh và tải về miễn phí.",
+  "start_url": "./welcome/",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#111111",
-  "theme_color": "#111111",
+  "background_color": "#faf7f2",
+  "theme_color": "#faf7f2",
   "icons": [
     {
       "src": "./pwa-icons/icon-192.png",

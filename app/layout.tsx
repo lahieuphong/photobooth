@@ -1,22 +1,25 @@
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Be_Vietnam_Pro, Newsreader } from 'next/font/google'
 import { getAssetPath } from '@/src/features/photobooth/utils/assetPath'
 import './globals.css'
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
+// Both families ship a Vietnamese subset, so diacritics never fall back glyph by glyph.
+const sans = Be_Vietnam_Pro({
+  variable: '--font-be-vietnam',
+  subsets: ['latin', 'vietnamese'],
+  weight: ['400', '500', '600', '700'],
 })
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
+const display = Newsreader({
+  variable: '--font-newsreader',
+  subsets: ['latin', 'vietnamese'],
+  style: ['normal', 'italic'],
 })
 
 export const metadata: Metadata = {
   title: 'Photobooth',
-  description: 'Photobooth chụp ảnh lấy liền với nhiều bố cục, bộ lọc và khung ảnh',
+  description: 'Chọn một trải nghiệm, chụp ảnh và tải về miễn phí.',
   manifest: getAssetPath('/manifest.webmanifest'),
   icons: {
     icon: [
@@ -42,7 +45,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
+    statusBarStyle: 'default',
     title: 'Photobooth',
   },
 }
@@ -51,6 +54,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  themeColor: '#faf7f2',
 }
 
 export default function RootLayout({
@@ -61,17 +65,20 @@ export default function RootLayout({
   return (
     <html
       lang="vi"
-      className={`${geistSans.variable} ${geistMono.variable} h-full`}
+      className={`${sans.variable} ${display.variable} h-full`}
     >
-      <body className="min-h-screen bg-[#111111] font-sans antialiased">
+      <body className="min-h-screen bg-paper font-sans text-ink antialiased">
+        {/* afterInteractive can run after window "load" already fired; register immediately then. */}
         <Script id="register-sw" strategy="afterInteractive">
           {`
             if ('serviceWorker' in navigator) {
-              window.addEventListener('load', function () {
+              var registerPhotoboothWorker = function () {
                 navigator.serviceWorker.register('${getAssetPath('/sw.js')}', {
                   scope: '${getAssetPath('/')}'
                 }).catch(function () {})
-              })
+              }
+              if (document.readyState === 'complete') registerPhotoboothWorker()
+              else window.addEventListener('load', registerPhotoboothWorker, { once: true })
             }
           `}
         </Script>

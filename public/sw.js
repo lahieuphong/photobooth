@@ -1,15 +1,13 @@
-const STATIC_CACHE = 'photobooth-static-v3'
+const STATIC_CACHE = 'photobooth-static-v4'
 
 // Caches created by this app, including the pre-rebrand name, so activation can
 // drop stale artwork without touching other caches on the same github.io origin.
 const OWN_CACHE_PREFIXES = ['photobooth-static-', 'btmt-photobooth-static-']
 
 const PRECACHE_ASSETS = [
-  'images/illustrations/camera.svg',
-  'images/layouts/preview-grid-2x2.svg',
-  'images/layouts/preview-stack-4.svg',
-  'images/layouts/preview-grid-2x3.svg',
   'images/logos/photobooth-mark.svg',
+  'pwa-icons/icon-192.png',
+  'pwa-icons/icon-512.png',
 ]
 
 function getScopedAssetUrl(path) {
@@ -48,6 +46,8 @@ self.addEventListener('activate', (event) => {
   )
 })
 
+// Static images: answer from cache for speed, refresh the cache in the background
+// so a redeployed asset with the same URL is picked up on the next visit.
 self.addEventListener('fetch', (event) => {
   const { request } = event
 
@@ -57,7 +57,7 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url)
 
-  if (url.origin !== self.location.origin) {
+  if (url.origin !== self.location.origin || !url.href.startsWith(self.registration.scope)) {
     return
   }
 
@@ -71,18 +71,20 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.open(STATIC_CACHE).then(async (cache) => {
       const cachedResponse = await cache.match(request, { ignoreSearch: true })
+      const networkUpdate = fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse.ok) {
+            cache.put(request, networkResponse.clone())
+          }
+          return networkResponse
+        })
 
       if (cachedResponse) {
+        event.waitUntil(networkUpdate.catch(() => undefined))
         return cachedResponse
       }
 
-      const networkResponse = await fetch(request)
-
-      if (networkResponse.ok) {
-        cache.put(request, networkResponse.clone())
-      }
-
-      return networkResponse
+      return networkUpdate
     }),
   )
 })

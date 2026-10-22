@@ -1,10 +1,5 @@
-import WelcomeMainScreen from '@/src/features/photobooth/components/screens/welcome/WelcomeMainScreen'
-import WelcomeRouteScreen from '@/src/features/photobooth/components/screens/welcome/WelcomeRouteScreen'
+import WelcomeScreen from '@/src/features/photobooth/components/screens/welcome/WelcomeScreen'
 
 export default function WelcomePage() {
-  return (
-    <WelcomeRouteScreen>
-      <WelcomeMainScreen />
-    </WelcomeRouteScreen>
-  )
+  return <WelcomeScreen />
 }
