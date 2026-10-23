@@ -344,7 +344,7 @@ export default function CaptureScreen() {
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col justify-center short:w-[240px]">
+        <div className="flex shrink-0 flex-col justify-center short:w-60">
           <div className="mt-3 flex shrink-0 flex-wrap items-center justify-center gap-1.5" aria-label="Tiến độ chụp">
             {session.shots.map((shot, index) => {
               const url = retake && index === retake.shotIndex ? null : urls[index]
@@ -354,7 +354,7 @@ export default function CaptureScreen() {
                 <div
                   key={index}
                   className={[
-                    'relative h-11 w-11 overflow-hidden rounded-[8px] border transition-colors',
+                    'relative h-11 w-11 overflow-hidden rounded-lg border transition-colors',
                     isActive ? 'border-accent' : 'border-line',
                     shot ? 'bg-paper-deep' : 'bg-white',
                   ].join(' ')}
@@ -377,7 +377,7 @@ export default function CaptureScreen() {
               onClick={() => void runCapture()}
               disabled={!isCameraReady || isBusy}
               aria-label={shutterLabel}
-              className="group relative flex h-[78px] w-[78px] items-center justify-center rounded-full bg-accent text-white shadow-[0_10px_26px_rgba(255,90,42,0.35)] ring-[5px] ring-accent/20 transition-transform duration-200 ease-out-soft active:scale-95 disabled:opacity-45 disabled:shadow-none"
+              className="group relative flex h-19.5 w-19.5 items-center justify-center rounded-full bg-accent text-white shadow-[0_10px_26px_rgba(255,90,42,0.35)] ring-[5px] ring-accent/20 transition-transform duration-200 ease-out-soft active:scale-95 disabled:opacity-45 disabled:shadow-none"
             >
               <Camera aria-hidden="true" size={30} strokeWidth={1.8} />
             </button>

@@ -49,7 +49,7 @@ function ReloadButton({ onReload, note }: { onReload: () => void; note: string |
         <RotateCw aria-hidden="true" size={16} />
         Tải lại trang
       </button>
-      {note ? <p className="max-w-[340px] text-[12px] leading-snug text-white/70">{note}</p> : null}
+      {note ? <p className="max-w-85 text-[12px] leading-snug text-white/70">{note}</p> : null}
     </>
   )
 }
@@ -74,9 +74,9 @@ export default function CameraViewport({ camera, filter = 'none', slot, reloadNo
   const aspectRatio = slot.width / slot.height
 
   return (
-    <div className="relative flex min-h-0 w-full flex-1 items-center justify-center [container-type:size]">
+    <div className="relative flex min-h-0 w-full flex-1 items-center justify-center @container-[size]">
       <div
-        className="relative overflow-hidden rounded-[24px] bg-ink"
+        className="relative overflow-hidden rounded-3xl bg-ink"
         style={{ aspectRatio, width: `min(100cqw, calc(100cqh * ${aspectRatio}))` }}
       >
         <video
@@ -112,7 +112,7 @@ export default function CameraViewport({ camera, filter = 'none', slot, reloadNo
           <div role="status" className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center text-white">
             <Spinner tone="light" />
             <p className="font-display text-[22px] leading-tight">Đang chờ bạn cho phép dùng camera</p>
-            <p className="max-w-[340px] text-[14px] leading-relaxed text-white/75">
+            <p className="max-w-85 text-[14px] leading-relaxed text-white/75">
               Chọn “Cho phép” trên thông báo của trình duyệt. Nếu không thấy thông báo, bấm biểu tượng camera hoặc ổ khóa trên thanh địa chỉ
               {state.overdue ? ', hoặc tải lại trang để trình duyệt hỏi lại.' : '.'}
             </p>
@@ -126,7 +126,7 @@ export default function CameraViewport({ camera, filter = 'none', slot, reloadNo
           <div role="alert" className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center text-white">
             <Hourglass aria-hidden="true" size={28} className="text-white/70" />
             <p className="font-display text-[22px] leading-tight">Camera phản hồi quá lâu</p>
-            <p className="max-w-[340px] text-[14px] leading-relaxed text-white/75">
+            <p className="max-w-85 text-[14px] leading-relaxed text-white/75">
               Nếu trình duyệt đang hỏi quyền dùng camera, hãy chọn “Cho phép” — hình sẽ tự hiện. Nếu không, đóng ứng dụng khác đang dùng
               camera rồi tải lại trang.
             </p>
@@ -151,7 +151,7 @@ export default function CameraViewport({ camera, filter = 'none', slot, reloadNo
           <div role="alert" className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center text-white">
             <CameraOff aria-hidden="true" size={28} className="text-white/70" />
             <p className="font-display text-[22px] leading-tight">{CAMERA_ERROR_COPY[state.kind].title}</p>
-            <p className="max-w-[340px] text-[14px] leading-relaxed text-white/75">{CAMERA_ERROR_COPY[state.kind].body}</p>
+            <p className="max-w-85 text-[14px] leading-relaxed text-white/75">{CAMERA_ERROR_COPY[state.kind].body}</p>
             <button
               type="button"
               onClick={retry}

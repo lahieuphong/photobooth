@@ -59,11 +59,11 @@ function OptionButton({
       aria-checked={isSelected}
       onClick={onClick}
       disabled={disabled}
-      className="group flex w-[76px] shrink-0 flex-col items-center gap-1.5 text-center focus-visible:outline-none disabled:opacity-45"
+      className="group flex w-19 shrink-0 flex-col items-center gap-1.5 text-center focus-visible:outline-none disabled:opacity-45"
     >
       <span
         className={[
-          'relative block w-full overflow-hidden rounded-[12px] border-2 transition-colors duration-150',
+          'relative block w-full overflow-hidden rounded-xl border-2 transition-colors duration-150',
           isSelected ? 'border-accent' : 'border-transparent group-hover:border-line',
           'group-focus-visible:border-ink',
         ].join(' ')}
@@ -136,7 +136,7 @@ export default function StudioScreen() {
       <div className="mt-2 flex min-h-0 flex-1 flex-col gap-4 md:flex-row md:gap-10">
         <FittedComposition {...composition} imageSizes="(max-width: 768px) 70vw, 420px" />
 
-        <aside className="flex shrink-0 flex-col gap-3 md:w-[340px] md:[justify-content:safe_center] short:min-h-0 short:overflow-y-auto">
+        <aside className="flex shrink-0 flex-col gap-3 md:w-85 md:justify-center-safe short:min-h-0 short:overflow-y-auto">
           <div className="hidden md:block short:hidden">
             <h1 className="font-display text-[40px] font-light leading-tight">Studio</h1>
             <p className="mt-1 text-[14px] text-ink-soft">Mọi thay đổi chỉ áp dụng lên ảnh hoàn chỉnh — ảnh gốc luôn được giữ nguyên.</p>

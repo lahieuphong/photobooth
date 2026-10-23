@@ -189,7 +189,7 @@ export default function SessionActivityGuard() {
   return (
     <>
       {isExpiring ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-paper">
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-paper">
           <Spinner label="Đang kết thúc phiên…" />
         </div>
       ) : null}
@@ -200,7 +200,7 @@ export default function SessionActivityGuard() {
             role="alertdialog"
             aria-labelledby="idle-warning-title"
             aria-describedby="idle-warning-body"
-            className="pointer-events-auto flex w-full max-w-[460px] flex-col gap-3 rounded-[20px] border border-line bg-white p-4 shadow-[0_18px_40px_rgba(26,23,20,0.16)] sm:flex-row sm:items-center"
+            className="pointer-events-auto flex w-full max-w-115 flex-col gap-3 rounded-[20px] border border-line bg-white p-4 shadow-[0_18px_40px_rgba(26,23,20,0.16)] sm:flex-row sm:items-center"
           >
             <Clock aria-hidden="true" size={22} className="shrink-0 text-accent" />
             <div className="min-w-0 flex-1">
@@ -220,7 +220,7 @@ export default function SessionActivityGuard() {
         <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
           <div
             role="status"
-            className="pointer-events-auto flex w-full max-w-[460px] items-start gap-3 rounded-[20px] border border-line bg-white p-4 shadow-[0_18px_40px_rgba(26,23,20,0.16)]"
+            className="pointer-events-auto flex w-full max-w-115 items-start gap-3 rounded-[20px] border border-line bg-white p-4 shadow-[0_18px_40px_rgba(26,23,20,0.16)]"
           >
             <p className="min-w-0 flex-1 text-[13px] leading-snug text-ink-soft">{toast}</p>
             <button

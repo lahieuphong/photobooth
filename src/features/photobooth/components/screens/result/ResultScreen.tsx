@@ -133,7 +133,7 @@ export default function ResultScreen() {
           imageSizes="(max-width: 768px) 70vw, 480px"
         />
 
-        <aside className="flex shrink-0 flex-col gap-3 md:w-[320px] md:[justify-content:safe_center] short:min-h-0 short:overflow-y-auto">
+        <aside className="flex shrink-0 flex-col gap-3 md:w-[320px] md:justify-center-safe short:min-h-0 short:overflow-y-auto">
           <div>
             <h1 className="font-display text-[clamp(28px,5vw,44px)] font-light leading-tight">Tác phẩm của bạn.</h1>
             <p className="mt-1 text-[13px] text-ink-soft">

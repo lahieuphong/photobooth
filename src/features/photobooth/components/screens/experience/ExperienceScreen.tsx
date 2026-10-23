@@ -113,7 +113,7 @@ export default function ExperienceScreen() {
         <h1 className="font-display text-[clamp(30px,6.4vw,52px)] font-light leading-[1.05] tracking-[-0.015em] short:text-[28px]">
           Bạn muốn kể câu chuyện nào?
         </h1>
-        <p className="mt-2 max-w-[560px] text-[14px] leading-relaxed text-ink-soft sm:text-[15px] short:hidden">
+        <p className="mt-2 max-w-140 text-[14px] leading-relaxed text-ink-soft sm:text-[15px] short:hidden">
           Mỗi trải nghiệm đã sắp sẵn số ảnh, bố cục và phong cách. Bạn vẫn chỉnh lại được trong Studio.
         </p>
         {notice ? (
@@ -148,7 +148,7 @@ export default function ExperienceScreen() {
                   : 'border-line hover:border-ink/25',
               ].join(' ')}
             >
-              <div className="overflow-hidden rounded-[6px] shadow-[0_6px_16px_rgba(26,23,20,0.1)] lg:mx-auto lg:w-[78%]">
+              <div className="overflow-hidden rounded-md shadow-[0_6px_16px_rgba(26,23,20,0.1)] lg:mx-auto lg:w-[78%]">
                 <PhotoComposition
                   layoutId={experience.layoutId}
                   frameId={experience.defaultFrameId}

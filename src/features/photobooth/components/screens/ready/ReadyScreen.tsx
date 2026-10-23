@@ -103,7 +103,7 @@ export default function ReadyScreen() {
           reloadNote={describeReloadLoss(memoryOnly)}
         />
 
-        <aside className="flex shrink-0 flex-col gap-4 md:w-[300px] md:[justify-content:safe_center] short:min-h-0 short:gap-3 short:overflow-y-auto">
+        <aside className="flex shrink-0 flex-col gap-4 md:w-75 md:justify-center-safe short:min-h-0 short:gap-3 short:overflow-y-auto">
           <div>
             <p className="text-[12px] font-semibold uppercase tracking-[0.2em] text-accent">{experience.title}</p>
             <h1 className="mt-1 font-display text-[clamp(26px,5vw,40px)] font-light leading-tight short:text-[24px]">Hãy vào khung hình.</h1>

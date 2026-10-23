@@ -24,7 +24,7 @@ export default function WelcomeScreen() {
           <h1 className="mt-4 font-display text-[clamp(40px,10vw,84px)] font-light leading-[0.98] tracking-[-0.02em] text-ink short:mt-2 short:text-[clamp(30px,5.4vw,44px)]">
             Mỗi khung hình là một <em className="font-normal italic text-accent">câu chuyện</em>.
           </h1>
-          <p className="mt-5 max-w-[440px] text-[15px] leading-relaxed text-ink-soft sm:text-[16px] short:mt-3 short:text-[13px]">
+          <p className="mt-5 max-w-110 text-[15px] leading-relaxed text-ink-soft sm:text-[16px] short:mt-3 short:text-[13px]">
             Chọn một trải nghiệm, nhìn vào camera — bố cục, ánh sáng và khung ảnh đã được sắp đặt sẵn. Tải ảnh về miễn phí ngay sau khi chụp.
           </p>
           <div className="mt-7 short:mt-4">
@@ -36,7 +36,7 @@ export default function WelcomeScreen() {
         </section>
 
         <section aria-hidden="true" className="relative flex min-h-0 flex-1 items-center justify-center pb-6 short:pb-0">
-          <div className="flex w-full max-w-[560px] items-center justify-center">
+          <div className="flex w-full max-w-140 items-center justify-center">
             {PREVIEW_PRINTS.map((print) => (
               <div
                 key={print.layoutId}

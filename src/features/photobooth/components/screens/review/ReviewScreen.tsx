@@ -126,7 +126,7 @@ export default function ReviewScreen() {
               { label: 'Ảnh mới', url: draftUrl },
             ].map((item) => (
               <figure key={item.label} className="flex min-h-0 flex-col gap-2">
-                <div className="relative min-h-0 flex-1 overflow-hidden rounded-[16px] bg-paper-deep">
+                <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl bg-paper-deep">
                   {item.label === 'Ảnh mới' && !retake.draftPhotoId ? (
                     <span className="absolute inset-0 flex items-center justify-center text-[13px] text-muted">Chưa chụp</span>
                   ) : isLoading && !item.url ? (
@@ -163,7 +163,7 @@ export default function ReviewScreen() {
           <ul
             className={[
               // `safe` keeps the first row reachable when the sheet is taller than the screen.
-              'mt-4 grid min-h-0 flex-1 gap-3 overflow-y-auto overscroll-contain [align-content:safe_center] sm:gap-4',
+              'mt-4 grid min-h-0 flex-1 gap-3 overflow-y-auto overscroll-contain content-center-safe sm:gap-4',
               session.shotCount === 6
                 ? 'grid-cols-2 sm:grid-cols-3 short:grid-cols-6'
                 : 'grid-cols-2 lg:grid-cols-4 short:grid-cols-4',
