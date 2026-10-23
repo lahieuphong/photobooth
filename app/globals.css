@@ -13,15 +13,37 @@
   --color-success: #2f7a4f;
   --color-danger: #b42318;
 
+  /* Logo palette, used by the playful Welcome cover. */
+  --color-cocoa: #4a1d24;
+  --color-cream: #fbe3a4;
+  --color-butter: #fff3d1;
+  --color-sunny: #f7c548;
+  --color-petal: #fdf2f3;
+  --color-blush: #fde6eb;
+  --color-blush-deep: #f5bfcc;
+
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Phones held sideways: too short for stacked camera + controls, so screens switch to two columns. */
 @custom-variant short (@media (orientation: landscape) and (max-height: 540px));
+/* Wide enough for side-by-side hero columns: laptops, or any phone held sideways. */
+/* Block form: a comma-separated media list here loses everything after the comma. */
+@custom-variant split {
+  @media (min-width: 64rem) {
+    @slot;
+  }
+  @media (orientation: landscape) and (max-height: 540px) {
+    @slot;
+  }
+}
 
 @theme inline {
   --font-sans: var(--font-be-vietnam), system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: var(--font-newsreader), Georgia, "Times New Roman", serif;
+  /* Only loaded by the Welcome screen; elsewhere these fall back gracefully. */
+  --font-bubble: var(--font-baloo), "Arial Rounded MT Bold", system-ui, sans-serif;
+  --font-hand: var(--font-patrick-hand), "Comic Sans MS", cursive;
 }
 
 /* Base rules live in a layer so Tailwind utilities (also layered) can override them. */
@@ -103,6 +125,25 @@
   }
 }
 
+@keyframes photobooth-float {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: 0 -10px;
+  }
+}
+
+@keyframes photobooth-nudge {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 5px;
+  }
+}
+
 @keyframes photobooth-flash {
   from {
     opacity: 0.85;
@@ -131,6 +172,38 @@
   animation: photobooth-flash 380ms ease-out both;
 }
 
+/* Animates `translate`, so it composes with Tailwind's `rotate-*` on the same element. */
+.animate-float {
+  animation: photobooth-float 3.8s ease-in-out infinite alternate;
+}
+
+.animate-nudge {
+  animation: photobooth-nudge 1.8s ease-in-out infinite;
+}
+
+/*
+ * Bubble headline: a stroked copy of the text sits under the real one (same grid
+ * cell, so it wraps identically), giving a thick sticker outline that never eats
+ * into the glyphs, in every browser.
+ */
+.bubble-text {
+  display: grid;
+}
+
+.bubble-text > * {
+  grid-area: 1 / 1;
+}
+
+.bubble-text__outline,
+.bubble-text__outline * {
+  color: var(--color-cream);
+}
+
+.bubble-text__outline {
+  -webkit-text-stroke: 0.22em var(--color-cream);
+  filter: drop-shadow(0 0.06em 0 var(--color-blush-deep)) drop-shadow(0 0.16em 0.22em rgb(176 58 85 / 0.2));
+}
+
 .animate-pop {
   animation: photobooth-pop 360ms var(--ease-out-soft) both;
 }
@@ -138,7 +211,9 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-rise,
   .animate-flash,
-  .animate-pop {
+  .animate-pop,
+  .animate-float,
+  .animate-nudge {
     animation: none;
   }
 }

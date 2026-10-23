@@ -34,7 +34,8 @@ function percent(value: number, total: number) {
   return `${(value / total) * 100}%`
 }
 
-function PlaceholderShot({ index }: { index: number }) {
+/** Illustrated sample shot; also used by the Welcome hero strip. */
+export function PlaceholderShot({ index }: { index: number }) {
   const [light, deep] = PLACEHOLDER_TONES[index % PLACEHOLDER_TONES.length]
   const people = 1 + (index % 2)
 

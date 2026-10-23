@@ -8,12 +8,19 @@ const LOGO_WIDTH = 635
 const LOGO_HEIGHT = 605
 
 type BrandMarkProps = {
-  size?: 'header' | 'hero'
+  size?: 'header' | 'hero' | 'nav'
 }
 
 const SIZE_CLASS_NAMES: Record<NonNullable<BrandMarkProps['size']>, string> = {
   header: 'h-12',
   hero: 'h-[clamp(72px,12vh,112px)] short:h-14',
+  nav: 'h-12 sm:h-14 lg:h-19 short:h-10',
+}
+
+const SIZES: Record<NonNullable<BrandMarkProps['size']>, string> = {
+  header: '52px',
+  hero: '120px',
+  nav: '80px',
 }
 
 export default function BrandMark({ size = 'header' }: BrandMarkProps) {
@@ -30,7 +37,7 @@ export default function BrandMark({ size = 'header' }: BrandMarkProps) {
         width={LOGO_WIDTH}
         height={LOGO_HEIGHT}
         priority
-        sizes={size === 'hero' ? '120px' : '52px'}
+        sizes={SIZES[size]}
         className={`w-auto ${SIZE_CLASS_NAMES[size]}`}
       />
     </Link>

@@ -57,7 +57,8 @@ export async function capturedCount(page: Page) {
 
 export async function startExperience(page: Page, title: string) {
   await page.goto('welcome/')
-  await page.getByRole('link', { name: /Bắt đầu/ }).click()
+  // The nav repeats the CTA; the hero one inside <main> is the primary entry point.
+  await page.getByRole('main').getByRole('link', { name: /^Bắt đầu/ }).click()
   await expectRoute(page, '/experience')
   await page.getByRole('radio', { name: new RegExp(title) }).click()
   const restart = page.getByRole('button', { name: /^Bắt đầu lại/ })
