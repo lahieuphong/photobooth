@@ -377,7 +377,7 @@ export default function CaptureScreen() {
               onClick={() => void runCapture()}
               disabled={!isCameraReady || isBusy}
               aria-label={shutterLabel}
-              className="group relative flex h-19.5 w-19.5 items-center justify-center rounded-full bg-accent text-white shadow-[0_10px_26px_rgba(255,90,42,0.35)] ring-[5px] ring-accent/20 transition-transform duration-200 ease-out-soft active:scale-95 disabled:opacity-45 disabled:shadow-none"
+              className="group relative flex h-19.5 w-19.5 items-center justify-center rounded-full bg-accent text-white shadow-[0_10px_26px_rgba(208,75,103,0.35)] ring-[5px] ring-accent/20 transition-transform duration-200 ease-out-soft active:scale-95 disabled:opacity-45 disabled:shadow-none"
             >
               <Camera aria-hidden="true" size={30} strokeWidth={1.8} />
             </button>

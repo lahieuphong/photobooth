@@ -72,7 +72,7 @@ function decorations(frameId: Exclude<PhotoboothFrameId, 'none'>, layout: Photob
     return [
       slotOutlines(layout, 0, '#E6E0D6', 2),
       `<text x="${margin}" y="${captionY}" font-family="${SANS}" font-size="24" letter-spacing="10" fill="#8A847B">PHOTOBOOTH</text>`,
-      `<circle cx="600" cy="${captionY - 8}" r="6" fill="#FF5A2A"/>`,
+      `<circle cx="600" cy="${captionY - 8}" r="6" fill="#D04B67"/>`,
       `<text x="${right}" y="${captionY}" text-anchor="end" font-family="${SANS}" font-size="24" letter-spacing="4" fill="#8A847B">${date}</text>`,
     ].join('')
   }
@@ -82,14 +82,14 @@ function decorations(frameId: Exclude<PhotoboothFrameId, 'none'>, layout: Photob
       `<text x="${margin}" y="58" font-family="${SANS}" font-size="20" letter-spacing="9" fill="#EDE6DA">PHOTOBOOTH</text>`,
       `<text x="${right}" y="58" text-anchor="end" font-family="${SANS}" font-size="20" letter-spacing="4" fill="#EDE6DA">${date}</text>`,
       `<path d="M${margin} ${captionY - 20}H430M770 ${captionY - 20}H${right}" stroke="#5C5650" stroke-width="2"/>`,
-      `<circle cx="${margin}" cy="${captionY - 20}" r="6" fill="#FF5A2A"/>`,
+      `<circle cx="${margin}" cy="${captionY - 20}" r="6" fill="#D04B67"/>`,
       `<text x="600" y="${captionY}" text-anchor="middle" font-family="${SERIF}" font-style="italic" font-size="60" fill="#F4EEE4">Photobooth</text>`,
     ].join('')
   }
 
   return [
     slotOutlines(layout, 0, '#FFFFFF', 12),
-    sparkle(margin - 30, 46, 22, '#FF5A2A'),
+    sparkle(margin - 30, 46, 22, '#D04B67'),
     `<circle cx="${margin + 40}" cy="34" r="8" fill="#F6B53D"/>`,
     `<circle cx="420" cy="48" r="6" fill="#6FB3B8"/>`,
     `<circle cx="780" cy="38" r="7" fill="#F28FB0"/>`,
@@ -98,8 +98,8 @@ function decorations(frameId: Exclude<PhotoboothFrameId, 'none'>, layout: Photob
     `<circle cx="300" cy="${captionY - 14}" r="9" fill="#F6B53D"/>`,
     `<circle cx="340" cy="${captionY - 30}" r="6" fill="#F28FB0"/>`,
     `<circle cx="860" cy="${captionY - 12}" r="9" fill="#6FB3B8"/>`,
-    `<circle cx="900" cy="${captionY - 32}" r="6" fill="#FF5A2A"/>`,
-    sparkle(margin, captionY - 18, 20, '#FF5A2A'),
+    `<circle cx="900" cy="${captionY - 32}" r="6" fill="#D04B67"/>`,
+    sparkle(margin, captionY - 18, 20, '#D04B67'),
     sparkle(right, captionY - 18, 20, '#F6B53D'),
     `<text x="600" y="${captionY}" text-anchor="middle" font-family="${ROUNDED}" font-size="44" font-weight="700" letter-spacing="6" fill="#2B2622">PHOTOBOOTH</text>`,
   ].join('')

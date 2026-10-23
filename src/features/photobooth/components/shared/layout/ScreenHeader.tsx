@@ -27,14 +27,14 @@ export default function ScreenHeader({ screen, onBack, backLabel = 'Quay lại' 
       <ArrowLeft aria-hidden="true" size={18} />
       {backLabel}
     </Link>
-  ) : (
-    <BrandMark />
-  )
+  ) : null
 
+  // Three columns so the logo stays centered whatever the side contents are.
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between gap-3">
-      {back}
-      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
+    <header className="grid h-14 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3">
+      <div className="justify-self-start">{back}</div>
+      <BrandMark />
+      <p className="justify-self-end text-right text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
         <span className="text-ink">{pad(screen.step)}</span>
         <span aria-hidden="true"> / {pad(PHOTOBOOTH_STEP_COUNT)}</span>
         <span className="sr-only"> trên {PHOTOBOOTH_STEP_COUNT}</span>

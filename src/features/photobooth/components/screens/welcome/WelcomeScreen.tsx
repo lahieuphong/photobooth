@@ -14,13 +14,13 @@ const PREVIEW_PRINTS = [
 export default function WelcomeScreen() {
   return (
     <ScreenShell>
-      <header className="flex h-12 shrink-0 items-center">
-        <BrandMark />
+      <header className="flex shrink-0 items-center justify-center">
+        <BrandMark size="hero" />
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col gap-6 pt-4 md:flex-row md:items-center md:gap-12 short:flex-row short:items-center short:gap-8 short:pt-0">
         <section className="animate-rise flex shrink-0 flex-col md:w-[46%] short:w-[54%]">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.24em] text-accent">Story-first photobooth</p>
+          <p className="text-[12px] font-semibold uppercase tracking-[0.24em] text-accent-deep">Story-first photobooth</p>
           <h1 className="mt-4 font-display text-[clamp(40px,10vw,84px)] font-light leading-[0.98] tracking-[-0.02em] text-ink short:mt-2 short:text-[clamp(30px,5.4vw,44px)]">
             Mỗi khung hình là một <em className="font-normal italic text-accent">câu chuyện</em>.
           </h1>
