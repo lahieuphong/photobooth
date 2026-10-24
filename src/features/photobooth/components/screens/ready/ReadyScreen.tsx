@@ -6,7 +6,9 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import BrandPage from '@/src/features/photobooth/components/shared/brand/BrandPage'
 import BubbleHeading from '@/src/features/photobooth/components/shared/brand/BubbleHeading'
 import PastelBackdrop from '@/src/features/photobooth/components/shared/brand/PastelBackdrop'
+import PerkStrip from '@/src/features/photobooth/components/shared/brand/PerkStrip'
 import { Doodle, HeartSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
+import TipsCard from '@/src/features/photobooth/components/shared/brand/TipsCard'
 import CameraCard from '@/src/features/photobooth/components/shared/camera/CameraCard'
 import CameraViewport from '@/src/features/photobooth/components/shared/camera/CameraViewport'
 import Button from '@/src/features/photobooth/components/shared/controls/Button'
@@ -38,7 +40,7 @@ import {
   type PhotoStoreStatus,
 } from '@/src/features/photobooth/services/storage/photoStore'
 import { consumeSessionNotice } from '@/src/features/photobooth/services/storage/sessionStorage'
-import { PresetSummary, READY_CARD_CLASS_NAME, ReadyPerks, ReadyTips } from './ReadyParts'
+import { PresetSummary, READY_CARD_CLASS_NAME, READY_PERKS, READY_TIPS } from './ReadyParts'
 
 const SCREEN = PHOTOBOOTH_SCREENS.ready
 
@@ -166,7 +168,7 @@ export default function ReadyScreen() {
                 Kiểm tra camera, chọn thời gian và chuẩn bị tạo những khung hình đáng nhớ nhé!
               </p>
             </section>
-            <ReadyTips className={`animate-rise [animation-delay:160ms] ${AREA.tips}`} />
+            <TipsCard id="ready-tips-title" tips={READY_TIPS} className={`animate-rise [animation-delay:160ms] ${AREA.tips}`} />
           </div>
 
           <section aria-label="Xem trước camera" className={`animate-rise [animation-delay:80ms] ${AREA.camera}`}>
@@ -268,7 +270,7 @@ export default function ReadyScreen() {
         </div>
 
         <div className={`${SITE_CONTAINER} hidden pb-[max(32px,env(safe-area-inset-bottom))] md:block short:hidden`}>
-          <ReadyPerks className="border-t border-blush-deep/50 pt-8" />
+          <PerkStrip perks={READY_PERKS} className="border-t border-blush-deep/50 pt-8" />
         </div>
       </main>
     </BrandPage>
