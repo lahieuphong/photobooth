@@ -16,7 +16,8 @@ type ButtonProps = {
 }
 
 const BASE_CLASS_NAME =
-  'inline-flex shrink-0 select-none items-center justify-center gap-2 whitespace-nowrap rounded-full font-semibold ' +
+  // Icons keep their size in a tight button; without shrink-0 they collapse to a dot.
+  'inline-flex shrink-0 select-none items-center justify-center gap-2 whitespace-nowrap rounded-full font-semibold [&_svg]:shrink-0 ' +
   'transition-[transform,translate,background-color,border-color,color,opacity,box-shadow] duration-200 ease-out-soft active:scale-[0.98] ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
 

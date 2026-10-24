@@ -1,22 +1,26 @@
 'use client'
 
-import { Check, Download, PenLine, RotateCcw } from 'lucide-react'
+import { Check, Download, PenLine, RotateCcw, ShieldCheck } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-import FittedComposition from '@/src/features/photobooth/components/shared/composition/FittedComposition'
+import { useState, type CSSProperties } from 'react'
+import BrandPage from '@/src/features/photobooth/components/shared/brand/BrandPage'
+import BubbleHeading from '@/src/features/photobooth/components/shared/brand/BubbleHeading'
+import PastelBackdrop from '@/src/features/photobooth/components/shared/brand/PastelBackdrop'
+import { CameraSticker, Doodle, HeartSticker, StarSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
+import PhotoComposition from '@/src/features/photobooth/components/shared/composition/PhotoComposition'
 import Button from '@/src/features/photobooth/components/shared/controls/Button'
 import MissingPhotosNotice from '@/src/features/photobooth/components/shared/feedback/MissingPhotosNotice'
 import Spinner from '@/src/features/photobooth/components/shared/feedback/Spinner'
-import ScreenHeader from '@/src/features/photobooth/components/shared/layout/ScreenHeader'
-import ScreenShell from '@/src/features/photobooth/components/shared/layout/ScreenShell'
+import FlowHeader from '@/src/features/photobooth/components/shared/layout/FlowHeader'
+import { SITE_CONTAINER } from '@/src/features/photobooth/components/shared/layout/siteLayout'
 import { getExperience } from '@/src/features/photobooth/config/experiences'
 import { PHOTOBOOTH_ROUTES } from '@/src/features/photobooth/config/routes'
 import { PHOTOBOOTH_SCREENS } from '@/src/features/photobooth/config/screenState'
 import { formatFrameDate, getFrame } from '@/src/features/photobooth/domain/frames'
-import { getLayout } from '@/src/features/photobooth/domain/layouts'
-import { getLook } from '@/src/features/photobooth/domain/looks'
+import { PRINT_HEIGHT, PRINT_WIDTH, getLayout } from '@/src/features/photobooth/domain/layouts'
+import { PHOTOBOOTH_LOOKS, getLook, type PhotoboothLook } from '@/src/features/photobooth/domain/looks'
 import { getResumeRoute } from '@/src/features/photobooth/domain/routeGuard'
-import { enterStudio, releaseMissingShots } from '@/src/features/photobooth/domain/session'
+import { enterStudio, releaseMissingShots, setLook } from '@/src/features/photobooth/domain/session'
 import { useNavigationLock } from '@/src/features/photobooth/hooks/useNavigationLock'
 import { usePhotoboothSession } from '@/src/features/photobooth/hooks/usePhotoboothSession'
 import { usePhotoUrls } from '@/src/features/photobooth/hooks/usePhotoUrls'
@@ -29,6 +33,9 @@ import { beginBusy } from '@/src/features/photobooth/services/session/activity'
 import { endSession } from '@/src/features/photobooth/services/storage/photoStore'
 import { releaseSession } from '@/src/features/photobooth/services/storage/sessionOwnership'
 import { clearStoredSession, setSessionNotice } from '@/src/features/photobooth/services/storage/sessionStorage'
+import { Confetti, OtherLooks, RESULT_CARD_CLASS_NAME, ResultDetails } from './ResultParts'
+
+const SCREEN = PHOTOBOOTH_SCREENS.result
 
 type ExportState = { status: 'idle' } | { status: 'working' } | { status: 'done'; fileName: string } | { status: 'error'; message: string }
 
@@ -53,10 +60,13 @@ export default function ResultScreen() {
 
   if (!isLoaded || !session) {
     return (
-      <ScreenShell>
-        <ScreenHeader screen={PHOTOBOOTH_SCREENS.result} />
-        <Spinner className="flex-1" />
-      </ScreenShell>
+      <BrandPage>
+        <main className="relative isolate flex min-h-full flex-col">
+          <PastelBackdrop />
+          <FlowHeader screen={SCREEN} />
+          <Spinner className="flex-1" />
+        </main>
+      </BrandPage>
     )
   }
 
@@ -97,6 +107,13 @@ export default function ResultScreen() {
     router.push(PHOTOBOOTH_ROUTES.STUDIO, { scroll: false })
   }
 
+  /** Same as "Chỉnh sửa lại", with another look already applied (setLook also reopens editing). */
+  function handleTryLook(look: PhotoboothLook) {
+    if (isLeaving || isExporting || !apply((current, now) => setLook(current, look.id, now))) return
+    setIsLeaving(true)
+    router.push(PHOTOBOOTH_ROUTES.STUDIO, { scroll: false })
+  }
+
   function handleRecover() {
     if (isLeaving || isExporting) return
     const next = apply((current, now) => releaseMissingShots(current, problemIds, now), { deleteDropped: false })
@@ -119,99 +136,178 @@ export default function ResultScreen() {
     router.push(PHOTOBOOTH_ROUTES.EXPERIENCE, { scroll: false })
   }
 
+  const isBusy = isLeaving || isExporting
+  const otherLooks = PHOTOBOOTH_LOOKS.filter((look) => look.id !== session.lookId).slice(0, 4)
+
   return (
-    <ScreenShell>
-      <ScreenHeader screen={PHOTOBOOTH_SCREENS.result} />
+    <BrandPage>
+      <main className="relative isolate min-h-full">
+        <PastelBackdrop />
+        <FlowHeader screen={SCREEN} />
 
-      <div className="mt-2 flex min-h-0 flex-1 flex-col gap-4 md:flex-row md:gap-10">
-        <FittedComposition
-          layoutId={session.layoutId}
-          frameId={session.frameId}
-          lookId={session.lookId}
-          photoUrls={urls}
-          dateLabel={dateLabel}
-          imageSizes="(max-width: 768px) 70vw, 480px"
-        />
-
-        <aside className="flex shrink-0 flex-col gap-3 md:w-[320px] md:justify-center-safe short:min-h-0 short:overflow-y-auto">
-          <div>
-            <h1 className="font-display text-[clamp(28px,5vw,44px)] font-light leading-tight">Tác phẩm của bạn.</h1>
-            <p className="mt-1 text-[13px] text-ink-soft">
-              {getExperience(session.experienceId).title} · {layout.label} · {getLook(session.lookId).label} ·{' '}
-              {getFrame(session.frameId).label}
-            </p>
-          </div>
-
-          {hasMissing ? (
-            <MissingPhotosNotice
-              missingCount={missingIds.length}
-              unreadableCount={unreadableIds.length}
-              onRecover={handleRecover}
-              onRetry={retry}
-              disabled={isLeaving || isExporting}
-            />
-          ) : null}
-
-          <Button onClick={() => void handleDownload()} disabled={!canExport} size="lg" className="w-full">
-            {isExporting ? (
-              'Đang tạo ảnh…'
-            ) : (
-              <>
-                <Download aria-hidden="true" size={18} />
-                Tải ảnh PNG
-              </>
-            )}
-          </Button>
-
-          <p
-            role={exportState.status === 'error' ? 'alert' : 'status'}
-            className={`min-h-[1.5em] text-[13px] ${exportState.status === 'error' ? 'text-danger' : 'text-ink-soft'}`}
-          >
-            {exportState.status === 'done' ? (
-              <span className="inline-flex items-start gap-1.5">
-                <Check aria-hidden="true" size={14} className="mt-0.5 shrink-0 text-success" />
-                <span>
-                  Đã tạo {exportState.fileName} và chuyển cho trình duyệt tải về. Nếu không thấy tệp trong mục Tải về,
-                  hãy bấm tải lại.
-                </span>
-              </span>
-            ) : exportState.status === 'error' ? (
-              exportState.message
-            ) : (
-              'Ảnh được tạo ngay trên máy này, không tải lên đâu cả.'
-            )}
-          </p>
-          {actionError ? (
-            <p role="alert" className="text-[13px] text-danger">
-              {actionError}
-            </p>
-          ) : null}
-
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="secondary" onClick={handleEdit} disabled={isLeaving || isExporting}>
-              <PenLine aria-hidden="true" size={16} />
-              Chỉnh sửa lại
-            </Button>
-            <Button
-              variant={isConfirmingRestart ? 'primary' : 'secondary'}
-              onClick={() => void handleRestart()}
-              disabled={isLeaving || isExporting}
+        <div
+          // The print is sized from its own shape and a per-layout height cap.
+          style={{ '--print-ratio': PRINT_WIDTH / PRINT_HEIGHT } as CSSProperties}
+          className={[
+            SITE_CONTAINER,
+            'flex flex-col gap-5 pt-4 pb-10 [--print-max-h:46svh] sm:pt-5 sm:[--print-max-h:54svh]',
+            'md:grid md:grid-cols-[minmax(0,1fr)_minmax(300px,400px)] md:grid-rows-[auto_1fr] md:items-start md:gap-x-8 md:[--print-max-h:min(calc(100svh-15rem),760px)]',
+            'lg:grid-cols-[minmax(0,1fr)_minmax(380px,460px)] lg:gap-x-12 lg:[--print-max-h:min(calc(100svh-15rem),820px)]',
+            'short:grid short:grid-cols-[minmax(0,calc(var(--print-max-h)*var(--print-ratio)+2rem))_minmax(0,1fr)] short:grid-rows-[auto_1fr] short:gap-x-6 short:gap-y-3 short:pt-2 short:[--print-max-h:calc(100svh-6rem)]',
+          ].join(' ')}
+        >
+          <section aria-labelledby="result-title" className="relative animate-rise text-center sm:text-left md:col-start-2 md:row-start-1 short:col-start-2 short:row-start-1">
+            <Confetti />
+            <BubbleHeading
+              id="result-title"
+              className="mx-auto font-bubble text-[clamp(40px,12vw,60px)] leading-[1.05] font-extrabold tracking-[-0.01em] text-accent sm:mx-0 lg:text-[clamp(56px,4.6vw,76px)] short:text-[34px]"
+              decorations={
+                <>
+                  <HeartSticker className="absolute top-[-0.1em] right-[-0.6em] w-[0.5em] rotate-12 animate-float" />
+                  <Doodle className="absolute bottom-[0.05em] left-[-0.6em] hidden w-[0.45em] -scale-x-100 rotate-180 lg:block" />
+                </>
+              }
             >
-              <RotateCcw aria-hidden="true" size={16} />
-              {isLeaving && isConfirmingRestart ? 'Đang xóa…' : isConfirmingRestart ? 'Xác nhận' : 'Chụp phiên mới'}
-            </Button>
-          </div>
-          {isConfirmingRestart ? (
-            <p className="text-[12px] text-ink-soft">
-              Ảnh của phiên này sẽ bị xóa khỏi bộ nhớ trình duyệt; ảnh PNG đã tải về vẫn được giữ. Hãy tải ảnh về trước
-              nếu muốn giữ.{' '}
-              <button type="button" className="font-semibold text-ink underline underline-offset-2" onClick={() => setIsConfirmingRestart(false)}>
-                Hủy
-              </button>
+              Tadaa!
+            </BubbleHeading>
+            <p className="mt-1 font-bubble text-[clamp(19px,5.4vw,26px)] leading-tight font-bold text-cocoa short:text-[18px]">
+              Tác phẩm của bạn đã hoàn thành!
             </p>
-          ) : null}
-        </aside>
-      </div>
-    </ScreenShell>
+            <p className="mt-2 text-[14px] leading-relaxed text-ink-soft sm:max-w-110 sm:text-[15px] short:hidden">
+              Tải về máy để lưu giữ và chia sẻ với bạn bè, hoặc thử một phong cách khác nhé!
+            </p>
+          </section>
+
+          {/* The print is exactly the exported PNG: no tilt, tape or stickers on top of it (e2e compares them). */}
+          <section
+            aria-label="Ảnh hoàn chỉnh"
+            className="flex animate-rise justify-center [animation-delay:80ms] md:sticky md:top-4 md:col-start-1 md:row-span-2 md:row-start-1 short:col-start-1 short:row-span-2 short:row-start-1"
+          >
+            <div className="relative w-[min(100%,calc(var(--print-max-h)*var(--print-ratio)+2rem))]">
+              <span
+                aria-hidden="true"
+                className="absolute -top-4 left-1/2 z-10 h-6 w-28 -translate-x-1/2 -rotate-3 rounded-[3px] bg-[repeating-linear-gradient(45deg,rgb(245_191_204/0.9)_0_6px,rgb(253_230_235/0.9)_6px_12px)] shadow-[0_4px_8px_-4px_rgba(74,29,36,0.3)]"
+              />
+              <HeartSticker className="absolute top-[20%] -left-5 z-10 hidden w-10 -rotate-12 sm:block" />
+              <StarSticker className="absolute top-[6%] -right-5 z-10 hidden w-9 sm:block" />
+              <CameraSticker className="absolute -right-8 -bottom-7 z-10 hidden w-24 rotate-12 md:block" />
+              <div className="rounded-[20px] bg-white p-4 shadow-[0_34px_70px_-34px_rgba(74,29,36,0.6)] ring-1 ring-blush-deep/50">
+                <PhotoComposition
+                  layoutId={session.layoutId}
+                  frameId={session.frameId}
+                  lookId={session.lookId}
+                  photoUrls={urls}
+                  dateLabel={dateLabel}
+                  imageSizes="(max-width: 768px) 70vw, 520px"
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Joins the page column on phones (so the download bar can stick to the screen), its own column from md. */}
+          <div className="contents md:col-start-2 md:row-start-2 md:flex md:min-w-0 md:animate-rise md:flex-col md:gap-4 md:[animation-delay:140ms] short:col-start-2 short:row-start-2 short:flex short:min-w-0 short:flex-col short:gap-3">
+            {hasMissing ? (
+              <MissingPhotosNotice
+                missingCount={missingIds.length}
+                unreadableCount={unreadableIds.length}
+                onRecover={handleRecover}
+                onRetry={retry}
+                disabled={isBusy}
+              />
+            ) : null}
+
+            {/* Sticky on phones so saving is always one tap away; in flow, so it never covers anything. */}
+            <div className="sticky bottom-0 z-20 -mx-4 border-t border-blush-deep/50 bg-petal/90 px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur-md sm:-mx-8 sm:px-8 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+              <Button onClick={() => void handleDownload()} disabled={!canExport} variant="candy" size="lg" className="h-16 w-full text-[18px]">
+                {isExporting ? (
+                  'Đang tạo ảnh…'
+                ) : (
+                  <>
+                    <Download aria-hidden="true" size={20} />
+                    Tải ảnh PNG
+                  </>
+                )}
+              </Button>
+            </div>
+            <p
+              role={exportState.status === 'error' ? 'alert' : 'status'}
+              className={`-mt-1.5 flex min-h-[1.5em] items-start justify-center gap-1.5 text-center text-[13px] leading-snug sm:justify-start sm:text-left ${
+                exportState.status === 'error' ? 'font-medium text-danger' : 'text-ink-soft'
+              }`}
+            >
+              {exportState.status === 'done' ? (
+                <>
+                  <Check aria-hidden="true" size={15} className="mt-0.5 shrink-0 text-success" />
+                  <span>
+                    Đã tạo {exportState.fileName} và chuyển cho trình duyệt tải về. Nếu không thấy tệp trong mục Tải về, hãy bấm tải lại.
+                  </span>
+                </>
+              ) : exportState.status === 'error' ? (
+                exportState.message
+              ) : (
+                <>
+                  <ShieldCheck aria-hidden="true" size={15} className="mt-0.5 shrink-0 text-accent" />
+                  <span>Ảnh được tạo ngay trên máy này, không tải lên đâu cả.</span>
+                </>
+              )}
+            </p>
+
+            {actionError ? (
+              <p role="alert" className="rounded-2xl bg-white/85 px-4 py-3 text-[13px] font-medium text-danger ring-1 ring-danger/30">
+                {actionError}
+              </p>
+            ) : null}
+
+            <ResultDetails
+              shotCount={session.shotCount}
+              layoutLabel={layout.label}
+              experienceTitle={getExperience(session.experienceId).title}
+              lookLabel={getLook(session.lookId).label}
+              frameLabel={getFrame(session.frameId).label}
+              dateLabel={dateLabel}
+            />
+
+            <OtherLooks
+              looks={otherLooks}
+              layoutId={session.layoutId}
+              frameId={session.frameId}
+              photoUrls={urls}
+              dateLabel={dateLabel}
+              disabled={isBusy || hasMissing}
+              onPick={handleTryLook}
+            />
+
+            <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
+              <Button variant="bubble" size="lg" onClick={handleEdit} disabled={isBusy} className="w-full px-5">
+                <PenLine aria-hidden="true" size={17} />
+                Chỉnh sửa lại
+              </Button>
+              <Button
+                variant={isConfirmingRestart ? 'candy' : 'bubble'}
+                size="lg"
+                onClick={() => void handleRestart()}
+                disabled={isBusy}
+                className="w-full px-5"
+              >
+                <RotateCcw aria-hidden="true" size={17} />
+                {isLeaving && isConfirmingRestart ? 'Đang xóa…' : isConfirmingRestart ? 'Xác nhận' : 'Chụp phiên mới'}
+              </Button>
+            </div>
+            {isConfirmingRestart ? (
+              <p className={`px-4 py-3 text-[13px] leading-snug text-ink-soft ${RESULT_CARD_CLASS_NAME}`}>
+                Ảnh của phiên này sẽ bị xóa khỏi bộ nhớ trình duyệt; ảnh PNG đã tải về vẫn được giữ. Hãy tải ảnh về trước nếu muốn giữ.{' '}
+                <button
+                  type="button"
+                  className="inline-flex min-h-11 items-center font-semibold text-cocoa underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-accent"
+                  onClick={() => setIsConfirmingRestart(false)}
+                >
+                  Hủy
+                </button>
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </main>
+    </BrandPage>
   )
 }
