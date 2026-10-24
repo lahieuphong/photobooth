@@ -1,21 +1,15 @@
+import BrandPage from '@/src/features/photobooth/components/shared/brand/BrandPage'
 import BrandMark from '@/src/features/photobooth/components/shared/layout/BrandMark'
-import { bubbleFont, handFont } from './fonts'
+import SiteNav from '@/src/features/photobooth/components/shared/layout/SiteNav'
+import { SITE_CONTAINER } from '@/src/features/photobooth/components/shared/layout/siteLayout'
 import WelcomeHero from './WelcomeHero'
-import WelcomeNav from './WelcomeNav'
 import { AboutSection, ExperienceShowcase, FrameShowcase } from './WelcomeSections'
-import { WELCOME_CONTAINER } from './welcomeLayout'
 
-/**
- * The cover is a scrolling landing page, unlike the single-screen capture flow.
- * It scrolls inside this fixed layer because phones lock html/body scrolling
- * (globals.css) to keep the camera screens from bouncing.
- */
+/** The cover is a scrolling landing page, unlike the single-screen capture flow. */
 export default function WelcomeScreen() {
   return (
-    <div
-      className={`${bubbleFont.variable} ${handFont.variable} fixed inset-0 overflow-x-hidden overflow-y-auto overscroll-contain bg-paper text-ink`}
-    >
-      <WelcomeNav />
+    <BrandPage>
+      <SiteNav page="welcome" />
       <main>
         <WelcomeHero />
         <ExperienceShowcase />
@@ -23,11 +17,11 @@ export default function WelcomeScreen() {
         <AboutSection />
       </main>
       <footer className="border-t border-line/70 bg-paper pt-8 pb-[max(28px,env(safe-area-inset-bottom))]">
-        <div className={`${WELCOME_CONTAINER} flex flex-col items-center gap-3 text-center sm:flex-row sm:justify-between sm:text-left`}>
+        <div className={`${SITE_CONTAINER} flex flex-col items-center gap-3 text-center sm:flex-row sm:justify-between sm:text-left`}>
           <BrandMark />
           <p className="text-[13px] text-muted">Mỗi khung hình là một câu chuyện · Ảnh của bạn chỉ nằm trên máy của bạn.</p>
         </div>
       </footer>
-    </div>
+    </BrandPage>
   )
 }

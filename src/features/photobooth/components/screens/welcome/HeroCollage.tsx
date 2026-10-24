@@ -1,5 +1,5 @@
 import PhotoComposition, { PlaceholderShot } from '@/src/features/photobooth/components/shared/composition/PhotoComposition'
-import { CameraSticker, Doodle, HeartSticker, StarSticker } from './Stickers'
+import { CameraSticker, Doodle, HeartSticker, StarSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
 
 // Every piece is placed in percentages of the collage box (fixed aspect ratio),
 // so the whole scene scales as one picture from 320px phones to wide desktops.

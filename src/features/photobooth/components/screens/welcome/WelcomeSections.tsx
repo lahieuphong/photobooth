@@ -1,21 +1,20 @@
 import { ArrowRight, Gift, ShieldCheck, Smartphone } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { PASTEL_TILE_TONES } from '@/src/features/photobooth/components/shared/brand/palette'
+import { HeartSticker, StarSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
 import Button from '@/src/features/photobooth/components/shared/controls/Button'
 import PhotoComposition from '@/src/features/photobooth/components/shared/composition/PhotoComposition'
+import { SITE_CONTAINER } from '@/src/features/photobooth/components/shared/layout/siteLayout'
 import { PHOTOBOOTH_EXPERIENCES } from '@/src/features/photobooth/config/experiences'
 import { PHOTOBOOTH_ROUTES } from '@/src/features/photobooth/config/routes'
 import { getFrame, type PhotoboothFrameId } from '@/src/features/photobooth/domain/frames'
 import type { PhotoboothLayoutId } from '@/src/features/photobooth/domain/layouts'
 import { PHOTOBOOTH_LOOKS, type PhotoboothLookId } from '@/src/features/photobooth/domain/looks'
-import { HeartSticker, StarSticker } from './Stickers'
-import { WELCOME_CONTAINER } from './welcomeLayout'
 
 // Below-the-fold sections the nav links scroll to. Content comes from the same
 // config as the capture flow, so a new experience, frame or look shows up here too.
 
 const SECTION_CLASS_NAME = 'relative scroll-mt-20 py-16 focus:outline-none sm:scroll-mt-24 sm:py-20 lg:scroll-mt-28 lg:py-24'
-
-const TILE_TONES = ['bg-blush', 'bg-butter', 'bg-[#e8f1e9]', 'bg-[#ece8f6]', 'bg-[#e2eef3]']
 
 const FRAME_SAMPLES: Array<{ frameId: PhotoboothFrameId; layoutId: PhotoboothLayoutId; lookId: PhotoboothLookId; tilt: string }> = [
   { frameId: 'minimal', layoutId: 'grid-4', lookId: 'warm', tilt: '-rotate-3' },
@@ -64,7 +63,7 @@ function SectionHeading({ id, eyebrow, title, children, align = 'center' }: Sect
 export function ExperienceShowcase() {
   return (
     <section id="trai-nghiem" tabIndex={-1} aria-labelledby="trai-nghiem-title" className={`${SECTION_CLASS_NAME} bg-paper`}>
-      <div className={WELCOME_CONTAINER}>
+      <div className={SITE_CONTAINER}>
         <SectionHeading id="trai-nghiem-title" eyebrow="Trải nghiệm" title="Chọn một câu chuyện để kể">
           Mỗi trải nghiệm có sẵn bố cục, số kiểu ảnh và gợi ý tạo dáng — bạn chỉ cần nhìn vào camera.
         </SectionHeading>
@@ -75,7 +74,7 @@ export function ExperienceShowcase() {
               key={experience.id}
               className="group flex flex-col rounded-[28px] bg-white p-2.5 shadow-[0_14px_30px_-18px_rgba(176,58,85,0.45)] ring-1 ring-blush-deep/60 transition-[translate,box-shadow] duration-300 ease-out-soft hover:-translate-y-1 hover:shadow-[0_22px_36px_-18px_rgba(176,58,85,0.55)] sm:p-3"
             >
-              <div className={`flex aspect-4/5 items-center justify-center rounded-[22px] ${TILE_TONES[index % TILE_TONES.length]}`}>
+              <div className={`flex aspect-4/5 items-center justify-center rounded-[22px] ${PASTEL_TILE_TONES[index % PASTEL_TILE_TONES.length]}`}>
                 <div className="w-[64%] -rotate-3 overflow-hidden rounded-[4px] shadow-[0_12px_20px_-10px_rgba(74,29,36,0.45)] transition-[rotate] duration-300 ease-out-soft group-hover:rotate-0">
                   <PhotoComposition
                     layoutId={experience.layoutId}
@@ -118,7 +117,7 @@ export function FrameShowcase() {
       aria-labelledby="mau-khung-title"
       className={`${SECTION_CLASS_NAME} overflow-hidden bg-linear-to-b from-paper via-petal to-paper`}
     >
-      <div className={WELCOME_CONTAINER}>
+      <div className={SITE_CONTAINER}>
         <SectionHeading id="mau-khung-title" eyebrow="Mẫu khung hình" title="Khung ảnh cho mọi tâm trạng">
           Đổi khung và tông màu bất cứ lúc nào sau khi chụp — ảnh gốc luôn được giữ nguyên.
         </SectionHeading>
@@ -166,7 +165,7 @@ export function FrameShowcase() {
 export function AboutSection() {
   return (
     <section id="ve-chung-minh" tabIndex={-1} aria-labelledby="ve-chung-minh-title" className={`${SECTION_CLASS_NAME} bg-paper`}>
-      <div className={WELCOME_CONTAINER}>
+      <div className={SITE_CONTAINER}>
         <div className="relative overflow-hidden rounded-[36px] bg-linear-to-br from-blush via-petal to-butter p-6 ring-1 ring-blush-deep/60 sm:p-10 lg:grid lg:grid-cols-[1fr_1.15fr] lg:items-center lg:gap-12 lg:p-14">
           <StarSticker className="absolute top-6 right-6 w-8 sm:w-10" />
           <SectionHeading id="ve-chung-minh-title" eyebrow="Về chúng mình" title="Một góc chụp nhỏ cho những câu chuyện lớn" align="start">

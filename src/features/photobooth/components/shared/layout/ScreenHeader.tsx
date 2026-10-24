@@ -1,8 +1,8 @@
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import type { PhotoboothScreen } from '@/src/features/photobooth/config/screenState'
-import { PHOTOBOOTH_STEP_COUNT } from '@/src/features/photobooth/config/screenState'
 import BrandMark from './BrandMark'
+import StepIndicator from './StepIndicator'
 
 type ScreenHeaderProps = {
   screen: PhotoboothScreen
@@ -10,8 +10,6 @@ type ScreenHeaderProps = {
   onBack?: () => void
   backLabel?: string
 }
-
-const pad = (value: number) => String(value).padStart(2, '0')
 
 const BACK_CLASS_NAME =
   '-ml-3 inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-[14px] font-medium text-ink-soft transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-2 focus-visible:outline-accent'
@@ -34,13 +32,7 @@ export default function ScreenHeader({ screen, onBack, backLabel = 'Quay lại' 
     <header className="grid h-14 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3">
       <div className="justify-self-start">{back}</div>
       <BrandMark />
-      <p className="justify-self-end text-right text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
-        <span className="text-ink">{pad(screen.step)}</span>
-        <span aria-hidden="true"> / {pad(PHOTOBOOTH_STEP_COUNT)}</span>
-        <span className="sr-only"> trên {PHOTOBOOTH_STEP_COUNT}</span>
-        <span aria-hidden="true"> · </span>
-        {screen.label}
-      </p>
+      <StepIndicator screen={screen} className="justify-self-end text-right" />
     </header>
   )
 }

@@ -144,6 +144,19 @@
   }
 }
 
+/* Uses `scale`, so it composes with Tailwind's `translate-*` hover lift. */
+@keyframes photobooth-select {
+  0% {
+    scale: 0.97;
+  }
+  55% {
+    scale: 1.025;
+  }
+  100% {
+    scale: 1;
+  }
+}
+
 @keyframes photobooth-flash {
   from {
     opacity: 0.85;
@@ -181,6 +194,10 @@
   animation: photobooth-nudge 1.8s ease-in-out infinite;
 }
 
+.animate-select {
+  animation: photobooth-select 340ms var(--ease-out-soft) both;
+}
+
 /*
  * Bubble headline: a stroked copy of the text sits under the real one (same grid
  * cell, so it wraps identically), giving a thick sticker outline that never eats
@@ -213,7 +230,8 @@
   .animate-flash,
   .animate-pop,
   .animate-float,
-  .animate-nudge {
+  .animate-nudge,
+  .animate-select {
     animation: none;
   }
 }

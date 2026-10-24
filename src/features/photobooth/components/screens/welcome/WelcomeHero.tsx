@@ -1,11 +1,13 @@
 import { ArrowDown, ArrowRight, Camera, Heart, Play, Sparkles, Star } from 'lucide-react'
 import type { ReactNode } from 'react'
+import BubbleHeading from '@/src/features/photobooth/components/shared/brand/BubbleHeading'
+import PastelBackdrop from '@/src/features/photobooth/components/shared/brand/PastelBackdrop'
+import { Doodle, HeartSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
 import Button, { getButtonClassName } from '@/src/features/photobooth/components/shared/controls/Button'
+import SectionLink from '@/src/features/photobooth/components/shared/layout/SectionLink'
+import { SITE_CONTAINER } from '@/src/features/photobooth/components/shared/layout/siteLayout'
 import { PHOTOBOOTH_ROUTES } from '@/src/features/photobooth/config/routes'
 import HeroCollage from './HeroCollage'
-import SectionLink from './SectionLink'
-import { Doodle, HeartSticker } from './Stickers'
-import { WELCOME_CONTAINER } from './welcomeLayout'
 
 const PERKS: Array<{ label: string; icon: ReactNode; tone: string }> = [
   {
@@ -35,19 +37,6 @@ const HEADLINE = (
   </>
 )
 
-function HeroBackdrop() {
-  return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden bg-linear-to-b from-petal via-blush to-[#fbdfe6]">
-      <div className="absolute -top-[15%] -left-[20%] size-[60vmax] rounded-full bg-[radial-gradient(closest-side,rgb(255_255_255/0.8),transparent)]" />
-      <div className="absolute top-[8%] -right-[18%] size-[55vmax] rounded-full bg-[radial-gradient(closest-side,rgb(245_191_204/0.55),transparent)]" />
-      <div className="absolute -bottom-[25%] left-[20%] size-[45vmax] rounded-full bg-[radial-gradient(closest-side,rgb(255_243_209/0.85),transparent)]" />
-      <span className="absolute top-[18%] left-[46%] size-2 rounded-full bg-accent/25" />
-      <span className="absolute top-[70%] left-[6%] size-3 rounded-full bg-sunny/50" />
-      <span className="absolute top-[12%] right-[6%] size-2.5 rounded-full bg-sunny/60" />
-    </div>
-  )
-}
-
 export default function WelcomeHero() {
   return (
     <section
@@ -56,10 +45,10 @@ export default function WelcomeHero() {
       aria-labelledby="welcome-title"
       className="relative isolate scroll-mt-20 overflow-hidden focus:outline-none sm:scroll-mt-24 lg:scroll-mt-28"
     >
-      <HeroBackdrop />
+      <PastelBackdrop />
 
       <div
-        className={`${WELCOME_CONTAINER} flex flex-col items-center pt-4 pb-16 sm:pt-8 sm:pb-24 split:grid split:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] split:items-center split:gap-x-6 lg:min-h-[min(calc(100svh-6rem),60rem)] lg:gap-x-12 lg:pt-6 lg:pb-32 short:pt-2 short:pb-14`}
+        className={`${SITE_CONTAINER} flex flex-col items-center pt-4 pb-16 sm:pt-8 sm:pb-24 split:grid split:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] split:items-center split:gap-x-6 lg:min-h-[min(calc(100svh-6rem),60rem)] lg:gap-x-12 lg:pt-6 lg:pb-32 short:pt-2 short:pb-14`}
       >
         {/* On phones these children interleave with the collage (via `order`); side by side they form one column. */}
         <div className="contents split:flex split:flex-col split:items-start">
@@ -69,20 +58,18 @@ export default function WelcomeHero() {
               Story-first photobooth
             </p>
 
-{/*
-              Sticker-style headline: the outline copy sits beside the <h1>, not inside it,
-              so the heading's text (for search engines and copy-paste) appears only once.
-            */}
-            <div className="bubble-text relative mt-5 w-fit font-bubble text-[clamp(34px,11.4vw,60px)] leading-[1.14] font-extrabold tracking-[-0.01em] text-cocoa sm:text-[68px] split:mt-6 lg:text-[clamp(56px,5.3vw,82px)] short:mt-3 short:text-[clamp(30px,5.6vw,42px)]">
-              <p aria-hidden="true" className="bubble-text__outline select-none">
-                {HEADLINE}
-              </p>
-              <h1 id="welcome-title" className="relative">
-                {HEADLINE}
-              </h1>
-              <HeartSticker className="absolute top-[34%] right-[-0.2em] w-[0.6em] rotate-12 split:right-[-0.7em]" />
-              <Doodle className="absolute bottom-[6%] left-[-0.75em] hidden w-[0.55em] -scale-x-100 rotate-180 xl:block" />
-            </div>
+            <BubbleHeading
+              id="welcome-title"
+              className="mt-5 font-bubble text-[clamp(34px,11.4vw,60px)] leading-[1.14] font-extrabold tracking-[-0.01em] text-cocoa sm:text-[68px] split:mt-6 lg:text-[clamp(56px,5.3vw,82px)] short:mt-3 short:text-[clamp(30px,5.6vw,42px)]"
+              decorations={
+                <>
+                  <HeartSticker className="absolute top-[34%] right-[-0.2em] w-[0.6em] rotate-12 split:right-[-0.7em]" />
+                  <Doodle className="absolute bottom-[6%] left-[-0.75em] hidden w-[0.55em] -scale-x-100 rotate-180 xl:block" />
+                </>
+              }
+            >
+              {HEADLINE}
+            </BubbleHeading>
 
             <p className="mt-4 max-w-132 text-[15px] leading-relaxed text-ink-soft sm:text-[17px] split:mt-5 short:mt-3 short:text-[14px]">
               Chọn một trải nghiệm, nhìn vào camera — bố cục, ánh sáng và khung ảnh đã được sắp đặt sẵn. Tải ảnh về miễn phí ngay sau khi chụp.

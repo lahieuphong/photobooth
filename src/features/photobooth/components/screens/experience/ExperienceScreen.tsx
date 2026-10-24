@@ -1,12 +1,17 @@
 'use client'
 
-import { ArrowRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import BrandPage from '@/src/features/photobooth/components/shared/brand/BrandPage'
+import BubbleHeading from '@/src/features/photobooth/components/shared/brand/BubbleHeading'
+import PastelBackdrop from '@/src/features/photobooth/components/shared/brand/PastelBackdrop'
+import { Doodle, HeartSticker, StarSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
 import Button from '@/src/features/photobooth/components/shared/controls/Button'
-import PhotoComposition from '@/src/features/photobooth/components/shared/composition/PhotoComposition'
-import ScreenHeader from '@/src/features/photobooth/components/shared/layout/ScreenHeader'
-import ScreenShell from '@/src/features/photobooth/components/shared/layout/ScreenShell'
+import SiteNav from '@/src/features/photobooth/components/shared/layout/SiteNav'
+import { SITE_CONTAINER } from '@/src/features/photobooth/components/shared/layout/siteLayout'
+import StepIndicator, { STEP_PILL_CLASS_NAME } from '@/src/features/photobooth/components/shared/layout/StepIndicator'
 import {
   PHOTOBOOTH_EXPERIENCES,
   getExperience,
@@ -15,7 +20,6 @@ import {
 import { PHOTOBOOTH_ROUTES, type PhotoboothRoute } from '@/src/features/photobooth/config/routes'
 import { PHOTOBOOTH_SCREENS } from '@/src/features/photobooth/config/screenState'
 import { SESSION_NOTICE_COPY } from '@/src/features/photobooth/config/sessionNotices'
-import { getLayout } from '@/src/features/photobooth/domain/layouts'
 import { getResumeRoute } from '@/src/features/photobooth/domain/routeGuard'
 import { createSession, getCapturedCount } from '@/src/features/photobooth/domain/session'
 import { collectGarbage, endSession } from '@/src/features/photobooth/services/storage/photoStore'
@@ -27,6 +31,12 @@ import {
   setSessionNotice,
   writeStoredSession,
 } from '@/src/features/photobooth/services/storage/sessionStorage'
+import ExperienceCard from './ExperienceCard'
+import ExperienceHeroArt from './ExperienceHeroArt'
+
+const SCREEN = PHOTOBOOTH_SCREENS.experience
+
+const ARROW_STEPS: Record<string, number> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }
 
 function createSessionId() {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -43,6 +53,7 @@ export default function ExperienceScreen() {
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isStarting, setIsStarting] = useState(false)
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
 
   useEffect(() => {
     let cancelled = false
@@ -105,103 +116,156 @@ export default function ExperienceScreen() {
     router.push(PHOTOBOOTH_ROUTES.READY, { scroll: false })
   }
 
+  /** Radio group keys: arrows move and select (wrapping), Home/End jump to the ends. */
+  function handleOptionKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    const count = PHOTOBOOTH_EXPERIENCES.length
+    let next: number
+    if (event.key in ARROW_STEPS) next = (index + ARROW_STEPS[event.key] + count) % count
+    else if (event.key === 'Home') next = 0
+    else if (event.key === 'End') next = count - 1
+    else return
+
+    event.preventDefault()
+    setSelectedId(PHOTOBOOTH_EXPERIENCES[next].id)
+    optionRefs.current[next]?.focus()
+  }
+
+  const statusMessage =
+    error ??
+    (isConfirmingRestart
+      ? 'Ảnh của phiên đang dở sẽ bị xóa khỏi bộ nhớ trình duyệt. Bấm lần nữa để bắt đầu lại.'
+      : resumeRoute
+        ? 'Bạn còn một phiên chụp đang dở.'
+        : null)
+
   return (
-    <ScreenShell>
-      <ScreenHeader screen={PHOTOBOOTH_SCREENS.experience} />
+    <BrandPage>
+      <SiteNav page="experience" />
 
-      <div className="animate-rise mt-3 shrink-0">
-        <h1 className="font-display text-[clamp(30px,6.4vw,52px)] font-light leading-[1.05] tracking-[-0.015em] short:text-[28px]">
-          Bạn muốn kể câu chuyện nào?
-        </h1>
-        <p className="mt-2 max-w-140 text-[14px] leading-relaxed text-ink-soft sm:text-[15px] short:hidden">
-          Mỗi trải nghiệm đã sắp sẵn số ảnh, bố cục và phong cách. Bạn vẫn chỉnh lại được trong Studio.
-        </p>
-        {notice ? (
-          <p role="status" className="mt-3 rounded-2xl bg-paper-deep px-4 py-3 text-[13px] text-ink-soft">
-            {notice}
-          </p>
-        ) : null}
-      </div>
+      {/* At least one screen tall (minus the sticky nav), so the action bar rests at the bottom on large displays. */}
+      <main className="relative isolate flex min-h-[calc(100dvh-4rem)] flex-col sm:min-h-[calc(100dvh-5rem)] lg:min-h-[calc(100dvh-6rem)] short:min-h-[calc(100dvh-3.5rem)]">
+        <PastelBackdrop />
 
-      <div
-        role="radiogroup"
-        aria-label="Trải nghiệm chụp ảnh"
-        className="mt-5 grid min-h-0 flex-1 auto-rows-min content-start gap-2.5 overflow-y-auto overscroll-contain pb-2 short:mt-3 short:grid-cols-2 lg:grid-cols-5 lg:gap-4"
-      >
-        {PHOTOBOOTH_EXPERIENCES.map((experience, index) => {
-          const isSelected = experience.id === selectedId
-          const layout = getLayout(experience.layoutId)
+        <div className={`${SITE_CONTAINER} flex-1 pb-2`}>
+          <div className="flex items-center justify-between gap-3 pt-2 sm:pt-4 short:pt-1">
+            {SCREEN.backHref ? (
+              <Link
+                href={SCREEN.backHref}
+                scroll={false}
+                className="-ml-3 inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-[14px] whitespace-nowrap font-semibold text-cocoa/80 transition-colors hover:bg-white/70 hover:text-cocoa focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                <ArrowLeft aria-hidden="true" size={18} />
+                Quay lại
+              </Link>
+            ) : (
+              <span />
+            )}
+            <StepIndicator
+              screen={SCREEN}
+              stepClassName="text-accent-deep"
+              className={STEP_PILL_CLASS_NAME}
+            />
+          </div>
 
-          return (
-            <button
-              key={experience.id}
-              type="button"
-              role="radio"
-              aria-checked={isSelected}
-              onClick={() => setSelectedId(experience.id)}
-              className={[
-                'group grid grid-cols-[52px_1fr] items-center gap-3.5 rounded-[18px] border bg-white px-3 py-2.5 text-left transition-[border-color,box-shadow,transform] duration-200 ease-out-soft',
-                'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
-                'sm:grid-cols-[72px_1fr] sm:gap-4 sm:p-3 lg:grid-cols-1 lg:items-start lg:p-4',
-                isSelected
-                  ? 'border-ink shadow-[0_10px_30px_rgba(26,23,20,0.08)]'
-                  : 'border-line hover:border-ink/25',
-              ].join(' ')}
-            >
-              <div className="overflow-hidden rounded-md shadow-[0_6px_16px_rgba(26,23,20,0.1)] lg:mx-auto lg:w-[78%]">
-                <PhotoComposition
-                  layoutId={experience.layoutId}
-                  frameId={experience.defaultFrameId}
-                  lookId={experience.defaultLookId}
-                  placeholder
-                  imageSizes="120px"
+          <div className="mt-3 animate-rise lg:mt-2 lg:flex lg:items-end lg:justify-between lg:gap-8 short:mt-1">
+            <div className="min-w-0">
+              <BubbleHeading
+                id="experience-title"
+                className="font-bubble text-[clamp(30px,9.4vw,52px)] leading-[1.12] font-extrabold tracking-[-0.01em] text-cocoa lg:text-[clamp(50px,4.6vw,66px)] short:text-[30px]"
+                decorations={
+                  <>
+                    <HeartSticker className="absolute top-[-0.12em] right-[-0.35em] w-[0.55em] rotate-12" />
+                    <Doodle className="absolute bottom-[8%] left-[-0.7em] hidden w-[0.5em] -scale-x-100 rotate-180 xl:block" />
+                  </>
+                }
+              >
+                <span className="block short:inline">Bạn muốn kể </span>
+                <span className="block text-accent short:inline">câu chuyện nào?</span>
+              </BubbleHeading>
+              <p
+                id="experience-subtitle"
+                className="mt-3 max-w-xl text-[14px] leading-relaxed text-ink-soft sm:text-[16px] short:mt-1.5 short:text-[13px]"
+              >
+                Mỗi trải nghiệm đã sắp sẵn số ảnh, bố cục và phong cách. Bạn vẫn chỉnh lại được trong Studio.
+              </p>
+              {notice ? (
+                <p role="status" className="mt-4 max-w-xl rounded-2xl bg-white/80 px-4 py-3 text-[13px] text-ink-soft ring-1 ring-blush-deep">
+                  {notice}
+                </p>
+              ) : null}
+            </div>
+            <ExperienceHeroArt className="hidden shrink-0 lg:block lg:w-[38%] short:hidden" />
+          </div>
+
+          <div
+            role="radiogroup"
+            aria-labelledby="experience-title"
+            aria-describedby="experience-subtitle"
+            className="mt-6 flex flex-col gap-3 md:flex-row md:flex-wrap md:justify-center md:gap-4 lg:mt-8 lg:gap-5 xl:flex-nowrap short:mt-4"
+          >
+            {PHOTOBOOTH_EXPERIENCES.map((experience, index) => (
+              <div
+                key={experience.id}
+                className="flex animate-rise md:w-[calc((100%-1rem)/2)] lg:w-[calc((100%-2.5rem)/3)] xl:w-auto xl:min-w-0 xl:flex-1"
+                style={{ animationDelay: `${80 + index * 50}ms` }}
+              >
+                <ExperienceCard
+                  experience={experience}
+                  index={index}
+                  isSelected={experience.id === selectedId}
+                  onSelect={() => setSelectedId(experience.id)}
+                  onKeyDown={(event) => handleOptionKeyDown(event, index)}
+                  buttonRef={(element) => {
+                    optionRefs.current[index] = element
+                  }}
                 />
               </div>
-
-              <div className="min-w-0">
-                <div className="flex items-baseline justify-between gap-2">
-                  <p className="flex items-baseline gap-2 font-display text-[20px] leading-tight sm:text-[22px]">
-                    <span className="font-sans text-[11px] font-semibold tabular-nums text-muted">
-                      {String(index + 1).padStart(2, '0')}
-                    </span>
-                    {experience.title}
-                  </p>
-                  <span
-                    aria-hidden="true"
-                    className={`h-2 w-2 shrink-0 rounded-full transition-colors ${isSelected ? 'bg-accent' : 'bg-line'}`}
-                  />
-                </div>
-                <p className="mt-0.5 truncate text-[13px] font-medium text-ink-soft">{experience.tagline}</p>
-                <p className="mt-1 text-[12px] text-muted">
-                  {experience.shotCount} ảnh · {layout.label}
-                </p>
-              </div>
-            </button>
-          )
-        })}
-      </div>
-
-      <div className="flex shrink-0 flex-col items-stretch gap-2 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <p role={error ? 'alert' : undefined} className={`text-[13px] ${error ? 'text-danger' : 'text-ink-soft'}`} aria-live="polite">
-          {error ??
-            (isConfirmingRestart
-              ? 'Ảnh của phiên đang dở sẽ bị xóa khỏi bộ nhớ trình duyệt. Bấm lần nữa để bắt đầu lại.'
-              : resumeRoute
-                ? 'Bạn còn một phiên chụp đang dở.'
-                : getExperience(selectedId).description)}
-        </p>
-        <div className="flex flex-col-reverse gap-2 sm:flex-row">
-          {resumeRoute ? (
-            <Button href={resumeRoute} variant="secondary" size="lg">
-              Tiếp tục phiên cũ
-            </Button>
-          ) : null}
-          <Button onClick={() => void handleContinue()} disabled={isStarting} size="lg">
-            {isConfirmingRestart ? 'Xác nhận bắt đầu lại' : resumeRoute ? 'Bắt đầu lại' : 'Tiếp tục'}
-            <ArrowRight aria-hidden="true" size={18} />
-          </Button>
+            ))}
+          </div>
         </div>
-      </div>
-    </ScreenShell>
+
+        {/* Sticky so the CTA is always reachable; in flow, so it never covers the last card. */}
+        <div className="sticky bottom-0 z-30 mt-8 border-t border-blush-deep/50 bg-petal/90 backdrop-blur-md short:mt-4">
+          <div
+            className={`${SITE_CONTAINER} flex flex-col gap-2.5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:pt-4 sm:pb-[max(16px,env(safe-area-inset-bottom))] short:pt-2 short:pb-[max(8px,env(safe-area-inset-bottom))]`}
+          >
+            {/* Phones show only the CTA for the plain hint; screen readers still hear it. */}
+            <p
+              role={error ? 'alert' : undefined}
+              aria-live="polite"
+              className={`min-w-0 text-[13px] sm:text-[14px] ${
+                error ? 'font-medium text-danger' : statusMessage ? 'text-cocoa' : 'items-center gap-2 max-sm:sr-only sm:flex'
+              }`}
+            >
+              {statusMessage ?? (
+                <>
+                  <StarSticker className="w-6 shrink-0" />
+                  <span className="font-hand text-[18px] leading-tight text-accent-deep lg:text-[21px]">
+                    {getExperience(selectedId).description}
+                  </span>
+                </>
+              )}
+            </p>
+            <div className="flex flex-col-reverse gap-2 sm:shrink-0 sm:flex-row">
+              {resumeRoute ? (
+                <Button href={resumeRoute} variant="bubble" size="lg" className="w-full sm:w-auto">
+                  Tiếp tục phiên cũ
+                </Button>
+              ) : null}
+              <Button
+                onClick={() => void handleContinue()}
+                disabled={isStarting}
+                variant="candy"
+                size="lg"
+                className="w-full sm:w-auto sm:min-w-52"
+              >
+                {isConfirmingRestart ? 'Xác nhận bắt đầu lại' : resumeRoute ? 'Bắt đầu lại' : 'Tiếp tục'}
+                <ArrowRight aria-hidden="true" size={18} />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </BrandPage>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import type { MouseEvent, ReactNode } from 'react'
-import type { WelcomeSectionId } from './welcomeLayout'
+import type { WelcomeSectionId } from './siteLayout'
 
 type SectionLinkProps = {
   to: WelcomeSectionId

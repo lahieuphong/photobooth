@@ -1,5 +1,5 @@
 /** Page gutter matching ScreenShell, plus safe areas for notched phones held sideways. */
-export const WELCOME_CONTAINER =
+export const SITE_CONTAINER =
   'mx-auto w-full max-w-310 pl-[max(16px,env(safe-area-inset-left))] pr-[max(16px,env(safe-area-inset-right))] ' +
   'sm:pl-[max(32px,env(safe-area-inset-left))] sm:pr-[max(32px,env(safe-area-inset-right))]'
 
