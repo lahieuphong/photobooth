@@ -234,4 +234,9 @@
   .animate-select {
     animation: none;
   }
+
+  /* Without its fade-out the flash layer would stay opaque and hide the live preview. */
+  .animate-flash {
+    opacity: 0;
+  }
 }

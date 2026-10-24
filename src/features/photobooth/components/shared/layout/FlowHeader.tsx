@@ -62,11 +62,34 @@ function FlowStepper({ screen }: { screen: PhotoboothScreen }) {
   )
 }
 
+const BACK_CLASS_NAME =
+  'col-span-3 inline-flex h-11 w-fit items-center gap-1.5 rounded-full bg-white/80 px-4 text-[14px] font-semibold text-cocoa shadow-[0_6px_16px_-12px_rgba(176,58,85,0.7)] ring-1 ring-blush-deep transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent short:col-span-1 short:col-start-2 short:row-start-1 short:h-10'
+
+type FlowHeaderProps = {
+  screen: PhotoboothScreen
+  /** Overrides the screen's back link, e.g. to cancel a retake before leaving. */
+  onBack?: () => void
+  backLabel?: string
+}
+
 /**
  * Header of the playful flow screens: logo, step progress (a stepper from `md`,
  * a compact "02 / 06" pill on phones) and the screen's back link.
  */
-export default function FlowHeader({ screen }: { screen: PhotoboothScreen }) {
+export default function FlowHeader({ screen, onBack, backLabel = 'Quay lại' }: FlowHeaderProps) {
+  // Its own row; on sideways phones it joins the logo row to save height.
+  const back = onBack ? (
+    <button type="button" onClick={onBack} className={BACK_CLASS_NAME}>
+      <ArrowLeft aria-hidden="true" size={18} />
+      {backLabel}
+    </button>
+  ) : screen.backHref ? (
+    <Link href={screen.backHref} scroll={false} className={BACK_CLASS_NAME}>
+      <ArrowLeft aria-hidden="true" size={18} />
+      {backLabel}
+    </Link>
+  ) : null
+
   return (
     <header
       className={`${SITE_CONTAINER} grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 pt-[env(safe-area-inset-top)] short:gap-x-3`}
@@ -82,17 +105,7 @@ export default function FlowHeader({ screen }: { screen: PhotoboothScreen }) {
         {/* Balances the logo so the stepper sits centered. */}
         <span aria-hidden="true" className="hidden w-14 md:block lg:w-20 short:hidden" />
       </div>
-      {screen.backHref ? (
-        // Its own row; on sideways phones it joins the logo row to save height.
-        <Link
-          href={screen.backHref}
-          scroll={false}
-          className="col-span-3 inline-flex h-11 w-fit items-center gap-1.5 rounded-full bg-white/80 px-4 text-[14px] font-semibold text-cocoa shadow-[0_6px_16px_-12px_rgba(176,58,85,0.7)] ring-1 ring-blush-deep transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent short:col-span-1 short:col-start-2 short:row-start-1 short:h-10"
-        >
-          <ArrowLeft aria-hidden="true" size={18} />
-          Quay lại
-        </Link>
-      ) : null}
+      {back}
     </header>
   )
 }

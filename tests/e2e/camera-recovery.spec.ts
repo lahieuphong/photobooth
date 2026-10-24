@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { capturedCount, expectCameraReady, expectRoute, goToCapture, readStorage, startExperience } from './helpers/app'
+import { capturedCount, expectCameraReady, expectRoute, goToCapture, readStorage, shoot, startExperience } from './helpers/app'
 import { failCameraRequests, holdCameraRequests } from './helpers/fakeCamera'
 
 test.describe('permission', () => {
@@ -91,6 +91,14 @@ test('double click and repeated Space never take duplicate shots', async ({ page
   await expect.poll(() => capturedCount(page)).toBe(3)
   const { session } = await readStorage(page)
   expect(session!.shots.map((shot) => (shot ? 1 : 0))).toEqual([1, 1, 1, 0])
+})
+
+test('reduced motion: the shutter flash never hides the live preview', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await startExperience(page, 'Quick 4')
+  await goToCapture(page, 'Tắt')
+  await shoot(page, 1)
+  await expect(page.locator('.animate-flash')).toHaveCSS('opacity', '0')
 })
 
 test('countdown 5s: one press takes every shot', async ({ page }) => {

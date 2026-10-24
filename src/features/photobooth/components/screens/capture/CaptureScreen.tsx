@@ -1,14 +1,18 @@
 'use client'
 
 import { Camera } from 'lucide-react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import BrandPage from '@/src/features/photobooth/components/shared/brand/BrandPage'
+import BubbleHeading from '@/src/features/photobooth/components/shared/brand/BubbleHeading'
+import PastelBackdrop from '@/src/features/photobooth/components/shared/brand/PastelBackdrop'
+import CameraCard from '@/src/features/photobooth/components/shared/camera/CameraCard'
 import CameraViewport from '@/src/features/photobooth/components/shared/camera/CameraViewport'
 import Spinner from '@/src/features/photobooth/components/shared/feedback/Spinner'
-import ScreenHeader from '@/src/features/photobooth/components/shared/layout/ScreenHeader'
-import ScreenShell from '@/src/features/photobooth/components/shared/layout/ScreenShell'
+import FlowHeader from '@/src/features/photobooth/components/shared/layout/FlowHeader'
+import { SITE_CONTAINER } from '@/src/features/photobooth/components/shared/layout/siteLayout'
+import { getExperience } from '@/src/features/photobooth/config/experiences'
 import { PHOTOBOOTH_ROUTES, type PhotoboothRoute } from '@/src/features/photobooth/config/routes'
 import { PHOTOBOOTH_SCREENS } from '@/src/features/photobooth/config/screenState'
 import { describeReloadLoss, describeStorageRisk } from '@/src/features/photobooth/config/storageNotices'
@@ -43,6 +47,7 @@ import {
 } from '@/src/features/photobooth/services/storage/photoStore'
 import { readStoredSession } from '@/src/features/photobooth/services/storage/sessionStorage'
 import { navigateWithFallback } from '@/src/features/photobooth/utils/navigation'
+import { CAPTURE_CARD_CLASS_NAME, CountdownOverlay, PoseGuide, ShotProgress, pad } from './CaptureParts'
 
 function isSessionReloadSafe() {
   const session = readStoredSession().session
@@ -57,7 +62,18 @@ const BETWEEN_SHOTS_MS = 900
 /** After this, a navigation that has not happened yet gets a manual link. */
 const STUCK_NAVIGATION_MS = 2500
 
-const pad = (value: number) => String(value).padStart(2, '0')
+const SCREEN = PHOTOBOOTH_SCREENS.capture
+
+/** Placement per layout: stacked (phones), 2 columns (md), 3 columns (xl), sideways phones (short). */
+const AREA = {
+  prompt: 'order-1 md:col-start-2 md:row-start-1 short:col-start-2 short:row-start-1',
+  camera:
+    'order-2 md:col-start-1 md:row-span-6 md:row-start-1 xl:col-start-2 xl:row-span-4 xl:row-start-1 short:col-start-1 short:row-span-6 short:row-start-1',
+  progress: 'order-3 md:col-start-2 md:row-start-2 xl:col-start-3 xl:row-start-1 short:col-start-2 short:row-start-2',
+  shutter: 'order-4 md:col-start-2 md:row-start-3 xl:col-start-3 xl:row-start-2 short:col-start-2 short:row-start-3',
+  notes: 'order-5 md:col-start-2 md:row-start-4 xl:col-start-3 xl:row-start-3 short:col-start-2 short:row-start-4',
+  poses: 'order-6 md:col-start-2 md:row-start-5 short:col-start-2 short:row-start-5',
+}
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms))
@@ -266,10 +282,13 @@ export default function CaptureScreen() {
 
   if (!isLoaded || !session) {
     return (
-      <ScreenShell>
-        <ScreenHeader screen={PHOTOBOOTH_SCREENS.capture} />
-        <Spinner className="flex-1" />
-      </ScreenShell>
+      <BrandPage>
+        <main className="relative isolate flex min-h-full flex-col">
+          <PastelBackdrop />
+          <FlowHeader screen={SCREEN} />
+          <Spinner className="flex-1" />
+        </main>
+      </BrandPage>
     )
   }
 
@@ -288,116 +307,133 @@ export default function CaptureScreen() {
       ? `Hẹn giờ ${session.countdown} giây · máy tự chụp các ảnh còn lại`
       : 'Bấm nút (hoặc phím cách) cho mỗi ảnh'
   const message = error ?? actionError
+  const isComplete = isCaptureComplete(session)
+  const statusLine = leavingTo ? 'Đang chuyển…' : isBusy ? 'Đang chụp…' : shutterLabel
+  const description =
+    countdownValue !== null
+      ? 'Giữ nguyên tư thế — máy sắp chụp!'
+      : 'Giữ nguyên vị trí, nhìn vào camera và thể hiện biểu cảm tự nhiên nhé!'
   const notes = [
     recoveredCount > 0 ? `${recoveredCount} ảnh trước không còn trên máy này nên sẽ được chụp bù.` : null,
     describeStorageRisk(storageStatus, memoryOnly),
   ].filter(Boolean)
 
   return (
-    <ScreenShell>
-      <ScreenHeader
-        screen={PHOTOBOOTH_SCREENS.capture}
-        onBack={retake ? handleCancelRetake : undefined}
-        backLabel={retake ? 'Hủy chụp lại' : undefined}
-      />
+    <BrandPage>
+      <main className="relative isolate min-h-full">
+        <PastelBackdrop />
+        <FlowHeader screen={SCREEN} onBack={retake ? handleCancelRetake : undefined} backLabel={retake ? 'Hủy chụp lại' : undefined} />
 
-      <div className="flex min-h-0 flex-1 flex-col short:flex-row short:gap-6">
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="mt-1 flex shrink-0 items-end justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-[12px] font-semibold uppercase tracking-[0.2em] text-muted">
+        <div
+          // The camera card is sized from the active slot's shape and a per-layout height cap.
+          style={{ '--camera-ratio': activeSlot.width / activeSlot.height } as CSSProperties}
+          className={[
+            SITE_CONTAINER,
+            'flex flex-col gap-4 pt-3 pb-8 [--camera-max-h:46svh] sm:gap-5 sm:pt-5 sm:[--camera-max-h:54svh]',
+            'md:grid md:grid-cols-[minmax(0,1fr)_minmax(280px,340px)] md:grid-rows-[auto_auto_auto_auto_auto_1fr] md:gap-x-6 md:gap-y-4 md:[--camera-max-h:min(64svh,720px)]',
+            'lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] lg:gap-x-8 lg:[--camera-max-h:min(68svh,740px)]',
+            'xl:grid-cols-[minmax(230px,290px)_minmax(0,1fr)_minmax(300px,340px)] xl:grid-rows-[auto_auto_auto_1fr] xl:gap-x-10',
+            'short:grid short:grid-cols-[minmax(0,calc(var(--camera-max-h)*var(--camera-ratio)+1.5rem))_minmax(0,1fr)] short:grid-rows-[auto_auto_auto_auto_auto_1fr] short:gap-x-6 short:gap-y-3 short:pt-2 short:[--camera-max-h:calc(100svh-5.5rem)]',
+          ].join(' ')}
+        >
+          {/* Its own column from xl; below that its children take part in the page grid. */}
+          <div className="contents xl:col-start-1 xl:row-span-4 xl:row-start-1 xl:flex xl:flex-col xl:gap-5">
+            <section aria-labelledby="capture-title" className={`text-center sm:text-left ${AREA.prompt}`}>
+              <p className="text-[11px] font-semibold tracking-[0.22em] text-accent-deep uppercase">
                 {retake ? `Chụp lại ảnh ${pad(activeShotIndex + 1)}` : 'Gợi ý tạo dáng'}
               </p>
-              <p key={prompt} className="animate-rise mt-1 truncate font-display text-[clamp(22px,4.6vw,36px)] italic leading-tight">
-                “{prompt}”
-              </p>
+              <BubbleHeading
+                key={prompt}
+                id="capture-title"
+                className="mx-auto mt-1.5 animate-rise font-bubble text-[clamp(24px,7.4vw,34px)] leading-[1.12] font-extrabold tracking-[-0.01em] text-cocoa sm:mx-0 md:text-[34px] xl:text-[clamp(36px,3vw,48px)] short:mt-1 short:text-[24px]"
+              >
+                {prompt}
+              </BubbleHeading>
+              <p className="mt-2 hidden text-[14px] leading-relaxed text-ink-soft sm:block xl:text-[15px] short:hidden">{description}</p>
+            </section>
+            <div className={`animate-rise [animation-delay:160ms] ${AREA.poses}`}>
+              <PoseGuide prompts={getExperience(session.experienceId).prompts} shots={session.shots} activeShotIndex={isComplete && !retake ? -1 : activeShotIndex} />
             </div>
-            <p className="shrink-0 font-display text-[clamp(28px,6vw,48px)] font-light tabular-nums leading-none" aria-live="polite">
-              {pad(activeShotIndex + 1)}
-              <span className="text-muted"> / {pad(session.shotCount)}</span>
-            </p>
           </div>
 
-          <div className="mt-3 flex min-h-0 flex-1 flex-col">
-            <CameraViewport camera={camera} filter={filter} slot={activeSlot} reloadNote={describeReloadLoss(memoryOnly)}>
-              {countdownValue !== null ? (
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <span
-                    key={countdownValue}
-                    className="animate-pop font-display text-[clamp(96px,26cqh,220px)] font-light leading-none text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
+          <section aria-label="Camera" className={`animate-rise [animation-delay:80ms] ${AREA.camera}`}>
+            <CameraCard>
+              <CameraViewport camera={camera} filter={filter} slot={activeSlot} reloadNote={describeReloadLoss(memoryOnly)}>
+                {isCameraReady ? (
+                  // Decorative: the shutter label and progress already say all of this.
+                  <p
+                    aria-hidden="true"
+                    className="absolute top-3 left-3 inline-flex items-center gap-2 rounded-full bg-white/95 px-3 py-1.5 text-[12px] font-bold tracking-[0.08em] text-cocoa uppercase shadow-[0_6px_14px_-6px_rgba(0,0,0,0.4)]"
                   >
-                    {countdownValue}
-                  </span>
-                </div>
-              ) : null}
+                    <span className={`size-2.5 rounded-full ${isBusy ? 'bg-danger motion-safe:animate-pulse' : 'bg-success'}`} />
+                    {isBusy ? 'Rec' : 'Sẵn sàng'} · Ảnh {pad(activeShotIndex + 1)}
+                  </p>
+                ) : null}
 
-              {flashKey > 0 ? (
-                <div key={flashKey} aria-hidden="true" className="animate-flash pointer-events-none absolute inset-0 bg-white" />
-              ) : null}
+                {countdownValue !== null ? <CountdownOverlay value={countdownValue} /> : null}
 
-              {isSaving ? (
-                <div className="absolute right-3 top-3 rounded-full bg-black/45 px-3 py-1.5 text-[12px] font-medium text-white">
-                  Đang lưu…
-                </div>
-              ) : null}
-            </CameraViewport>
-          </div>
-        </div>
+                {flashKey > 0 ? (
+                  <div key={flashKey} aria-hidden="true" className="animate-flash pointer-events-none absolute inset-0 bg-white" />
+                ) : null}
 
-        <div className="flex shrink-0 flex-col justify-center short:w-60">
-          <div className="mt-3 flex shrink-0 flex-wrap items-center justify-center gap-1.5" aria-label="Tiến độ chụp">
-            {session.shots.map((shot, index) => {
-              const url = retake && index === retake.shotIndex ? null : urls[index]
-              const isActive = index === activeShotIndex
+                {isSaving ? (
+                  <div className="absolute top-3 right-3 rounded-full bg-black/45 px-3 py-1.5 text-[12px] font-medium text-white">Đang lưu…</div>
+                ) : null}
+              </CameraViewport>
+            </CameraCard>
+          </section>
 
-              return (
-                <div
-                  key={index}
-                  className={[
-                    'relative h-11 w-11 overflow-hidden rounded-lg border transition-colors',
-                    isActive ? 'border-accent' : 'border-line',
-                    shot ? 'bg-paper-deep' : 'bg-white',
-                  ].join(' ')}
-                >
-                  {url ? (
-                    <Image src={url} alt="" fill unoptimized sizes="44px" className="object-cover" style={{ filter }} />
-                  ) : (
-                    <span className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold tabular-nums text-muted">
-                      {pad(index + 1)}
-                    </span>
-                  )}
-                </div>
-              )
-            })}
+          <div className={`animate-rise [animation-delay:120ms] ${AREA.progress}`}>
+            <ShotProgress
+              layout={layout}
+              shots={session.shots}
+              urls={session.shots.map((_, index) => (retake && index === retake.shotIndex ? null : urls[index]))}
+              activeShotIndex={activeShotIndex}
+              isRetake={Boolean(retake)}
+              isComplete={isComplete}
+              filter={filter}
+            />
           </div>
 
-          <div className="mt-3 flex shrink-0 flex-col items-center gap-2">
+          {/* Sticky on phones so the shutter stays under the thumb; in flow, so it never covers content. */}
+          <div
+            className={`sticky bottom-0 z-20 -mx-4 flex items-center gap-4 border-t border-blush-deep/50 bg-petal/90 px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur-md sm:-mx-8 sm:px-8 md:static md:mx-0 md:flex-col md:gap-2 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none short:sticky short:mx-0 short:flex-row short:border-0 short:bg-petal/90 short:px-0 short:pt-2 short:pb-[max(8px,env(safe-area-inset-bottom))] short:backdrop-blur-md ${AREA.shutter}`}
+          >
             <button
               type="button"
               onClick={() => void runCapture()}
               disabled={!isCameraReady || isBusy}
               aria-label={shutterLabel}
-              className="group relative flex h-19.5 w-19.5 items-center justify-center rounded-full bg-accent text-white shadow-[0_10px_26px_rgba(208,75,103,0.35)] ring-[5px] ring-accent/20 transition-transform duration-200 ease-out-soft active:scale-95 disabled:opacity-45 disabled:shadow-none"
+              className="group relative grid size-18 shrink-0 place-items-center rounded-full bg-linear-to-b from-[#de5f7b] to-accent-deep text-white shadow-[0_5px_0_#8e2a43,0_16px_28px_-8px_rgba(176,58,85,0.6)] ring-[6px] ring-cream transition-[translate,box-shadow,opacity] duration-200 ease-out-soft hover:-translate-y-0.5 focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-cocoa active:translate-y-1 active:shadow-[0_1px_0_#8e2a43] disabled:pointer-events-none disabled:opacity-45 disabled:shadow-none md:size-22 short:size-16"
             >
-              <Camera aria-hidden="true" size={30} strokeWidth={1.8} />
+              <span className="grid size-[62%] place-items-center rounded-full bg-white/15 ring-2 ring-white/70">
+                <Camera aria-hidden="true" size={28} strokeWidth={1.9} />
+              </span>
             </button>
-            <p className="text-[14px] font-semibold">{leavingTo ? 'Đang chuyển…' : isBusy ? 'Đang chụp…' : shutterLabel}</p>
-            <p role={message ? 'alert' : undefined} className={`text-center text-[12px] ${message ? 'text-danger' : 'text-muted'}`}>
-              {message ?? hint}
-            </p>
-            {notes.map((note) => (
-              <p key={note} className="text-center text-[12px] text-ink-soft">
-                {note}
+            <div className="min-w-0 flex-1 md:text-center short:text-left">
+              <p className="font-bubble text-[17px] font-bold text-cocoa">{statusLine}</p>
+              <p role={message ? 'alert' : undefined} className={`text-[12px] leading-snug ${message ? 'font-medium text-danger' : 'text-ink-soft'}`}>
+                {message ?? hint}
               </p>
-            ))}
-            {leavingTo && isNavigationStuck ? (
-              <Link href={leavingTo} scroll={false} className="text-[13px] font-semibold text-ink underline underline-offset-2">
-                Tiếp tục tới bước Xem lại
-              </Link>
-            ) : null}
+              {leavingTo && isNavigationStuck ? (
+                <Link href={leavingTo} scroll={false} className="mt-1 inline-block text-[13px] font-semibold text-cocoa underline underline-offset-2">
+                  Tiếp tục tới bước Xem lại
+                </Link>
+              ) : null}
+            </div>
           </div>
+
+          {notes.length > 0 ? (
+            <div className={`flex flex-col gap-2 ${AREA.notes}`}>
+              {notes.map((note) => (
+                <p key={note} className={`px-4 py-3 text-[13px] leading-snug text-ink-soft ${CAPTURE_CARD_CLASS_NAME}`}>
+                  {note}
+                </p>
+              ))}
+            </div>
+          ) : null}
         </div>
-      </div>
-    </ScreenShell>
+      </main>
+    </BrandPage>
   )
 }

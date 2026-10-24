@@ -6,7 +6,8 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import BrandPage from '@/src/features/photobooth/components/shared/brand/BrandPage'
 import BubbleHeading from '@/src/features/photobooth/components/shared/brand/BubbleHeading'
 import PastelBackdrop from '@/src/features/photobooth/components/shared/brand/PastelBackdrop'
-import { Doodle, HeartSticker, StarSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
+import { Doodle, HeartSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
+import CameraCard from '@/src/features/photobooth/components/shared/camera/CameraCard'
 import CameraViewport from '@/src/features/photobooth/components/shared/camera/CameraViewport'
 import Button from '@/src/features/photobooth/components/shared/controls/Button'
 import Spinner from '@/src/features/photobooth/components/shared/feedback/Spinner'
@@ -169,32 +170,25 @@ export default function ReadyScreen() {
           </div>
 
           <section aria-label="Xem trước camera" className={`animate-rise [animation-delay:80ms] ${AREA.camera}`}>
-            <div className="relative mx-auto w-[min(100%,calc(var(--camera-max-h)*var(--camera-ratio)+1.5rem))]">
-              <HeartSticker className="absolute top-[58%] -left-4 z-10 hidden w-10 -rotate-12 animate-float sm:block" />
-              <Doodle className="absolute -top-5 -right-4 z-10 hidden w-10 sm:block" />
-              <StarSticker className="absolute -right-3 -bottom-3 z-10 w-8 animate-float [animation-delay:-1.5s] sm:w-10" />
-              <div className="rounded-[32px] bg-white/90 p-3 shadow-[0_30px_60px_-30px_rgba(74,29,36,0.55)] ring-1 ring-blush-deep/70">
-                <div className="flex aspect-(--camera-ratio) w-full">
-                  <CameraViewport
-                    camera={camera}
-                    filter={toCssFilter(getLook(session.lookId))}
-                    slot={slot}
-                    reloadNote={describeReloadLoss(memoryOnly)}
+            <CameraCard>
+              <CameraViewport
+                camera={camera}
+                filter={toCssFilter(getLook(session.lookId))}
+                slot={slot}
+                reloadNote={describeReloadLoss(memoryOnly)}
+              >
+                {isCameraReady ? (
+                  // Visual echo of the status below, which is the one announced to screen readers.
+                  <p
+                    aria-hidden="true"
+                    className="absolute top-3 left-3 inline-flex animate-pop items-center gap-2 rounded-full bg-white/95 px-3 py-1.5 text-[13px] font-semibold text-cocoa shadow-[0_6px_14px_-6px_rgba(0,0,0,0.4)]"
                   >
-                    {isCameraReady ? (
-                      // Visual echo of the status below, which is the one announced to screen readers.
-                      <p
-                        aria-hidden="true"
-                        className="absolute top-3 left-3 inline-flex animate-pop items-center gap-2 rounded-full bg-white/95 px-3 py-1.5 text-[13px] font-semibold text-cocoa shadow-[0_6px_14px_-6px_rgba(0,0,0,0.4)]"
-                      >
-                        <span className="size-2.5 rounded-full bg-success" />
-                        Camera đã sẵn sàng!
-                      </p>
-                    ) : null}
-                  </CameraViewport>
-                </div>
-              </div>
-            </div>
+                    <span className="size-2.5 rounded-full bg-success" />
+                    Camera đã sẵn sàng!
+                  </p>
+                ) : null}
+              </CameraViewport>
+            </CameraCard>
           </section>
 
           <section aria-label="Thiết lập buổi chụp" className={`flex animate-rise flex-col gap-4 [animation-delay:120ms] ${AREA.panel}`}>
