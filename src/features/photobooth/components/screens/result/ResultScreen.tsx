@@ -184,7 +184,7 @@ export default function ResultScreen() {
             <div className="relative w-[min(100%,calc(var(--print-max-h)*var(--print-ratio)+2rem))]">
               <span
                 aria-hidden="true"
-                className="absolute -top-4 left-1/2 z-10 h-6 w-28 -translate-x-1/2 -rotate-3 rounded-[3px] bg-[repeating-linear-gradient(45deg,rgb(245_191_204/0.9)_0_6px,rgb(253_230_235/0.9)_6px_12px)] shadow-[0_4px_8px_-4px_rgba(74,29,36,0.3)]"
+                className="absolute -top-4 left-1/2 z-10 h-6 w-28 -translate-x-1/2 -rotate-3 rounded-[3px] short:hidden bg-[repeating-linear-gradient(45deg,rgb(245_191_204/0.9)_0_6px,rgb(253_230_235/0.9)_6px_12px)] shadow-[0_4px_8px_-4px_rgba(74,29,36,0.3)]"
               />
               <HeartSticker className="absolute top-[20%] -left-5 z-10 hidden w-10 -rotate-12 sm:block" />
               <StarSticker className="absolute top-[6%] -right-5 z-10 hidden w-9 sm:block" />

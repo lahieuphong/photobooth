@@ -31,10 +31,10 @@ function FlowStepper({ screen }: { screen: PhotoboothScreen }) {
             {index > 0 ? (
               <span
                 aria-hidden="true"
-                className={`mt-5 w-5 border-t-2 border-dashed lg:w-9 ${isDone || isCurrent ? 'border-accent/45' : 'border-blush-deep'}`}
+                className={`mt-5 w-3 border-t-2 border-dashed lg:w-6 xl:w-9 ${isDone || isCurrent ? 'border-accent/45' : 'border-blush-deep'}`}
               />
             ) : null}
-            <span className="flex w-16 flex-col items-center gap-1 text-center lg:w-18">
+            <span className="flex w-14 flex-col items-center gap-1 text-center lg:w-16 xl:w-18">
               <span
                 className={`grid size-10 place-items-center rounded-full transition-colors ${
                   isCurrent
@@ -50,7 +50,7 @@ function FlowStepper({ screen }: { screen: PhotoboothScreen }) {
                 <span className="sr-only">Bước </span>
                 {pad(step.step)}
               </span>
-              <span className={`text-[11px] leading-tight ${isCurrent ? 'font-semibold text-cocoa' : 'text-ink-soft'}`}>
+              <span className={`text-[11px] leading-tight whitespace-nowrap ${isCurrent ? 'font-semibold text-cocoa' : 'text-ink-soft'}`}>
                 {step.label}
                 {isDone ? <span className="sr-only"> (đã xong)</span> : null}
               </span>
@@ -62,8 +62,14 @@ function FlowStepper({ screen }: { screen: PhotoboothScreen }) {
   )
 }
 
+// A 44px round icon button where space is tight (phones, md–lg next to the stepper), labelled otherwise.
 const BACK_CLASS_NAME =
-  'col-span-3 inline-flex h-11 w-fit items-center gap-1.5 rounded-full bg-white/80 px-4 text-[14px] font-semibold text-cocoa shadow-[0_6px_16px_-12px_rgba(176,58,85,0.7)] ring-1 ring-blush-deep transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent short:col-span-1 short:col-start-2 short:row-start-1 short:h-10'
+  'inline-flex size-11 shrink-0 items-center justify-center gap-1.5 rounded-full bg-white/80 text-[14px] font-semibold text-cocoa ' +
+  'shadow-[0_6px_16px_-12px_rgba(176,58,85,0.7)] ring-1 ring-blush-deep transition-[background-color,translate] duration-200 ease-out-soft ' +
+  'hover:-translate-x-0.5 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ' +
+  'sm:w-auto sm:px-4 md:w-11 md:px-0 xl:w-auto xl:px-4 short:w-11 short:px-0'
+
+const BACK_LABEL_CLASS_NAME = 'hidden whitespace-nowrap sm:inline md:hidden xl:inline short:hidden'
 
 type FlowHeaderProps = {
   screen: PhotoboothScreen
@@ -73,39 +79,42 @@ type FlowHeaderProps = {
 }
 
 /**
- * Header of the playful flow screens: logo, step progress (a stepper from `md`,
- * a compact "02 / 06" pill on phones) and the screen's back link.
+ * Header of every flow screen, one row: back button and logo on the left, the
+ * step progress in the middle (a stepper from `md`), and a compact "02 / 06"
+ * pill on the right where the stepper does not fit.
  */
 export default function FlowHeader({ screen, onBack, backLabel = 'Quay lại' }: FlowHeaderProps) {
-  // Its own row; on sideways phones it joins the logo row to save height.
+  const backContent = (
+    <>
+      <ArrowLeft aria-hidden="true" size={19} />
+      <span className={BACK_LABEL_CLASS_NAME}>{backLabel}</span>
+    </>
+  )
+  // aria-label keeps the name when the label is hidden; the title shows it on hover.
   const back = onBack ? (
-    <button type="button" onClick={onBack} className={BACK_CLASS_NAME}>
-      <ArrowLeft aria-hidden="true" size={18} />
-      {backLabel}
+    <button type="button" onClick={onBack} aria-label={backLabel} title={backLabel} className={BACK_CLASS_NAME}>
+      {backContent}
     </button>
   ) : screen.backHref ? (
-    <Link href={screen.backHref} scroll={false} className={BACK_CLASS_NAME}>
-      <ArrowLeft aria-hidden="true" size={18} />
-      {backLabel}
+    <Link href={screen.backHref} scroll={false} aria-label={backLabel} title={backLabel} className={BACK_CLASS_NAME}>
+      {backContent}
     </Link>
   ) : null
 
   return (
-    <header
-      className={`${SITE_CONTAINER} grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 pt-[env(safe-area-inset-top)] short:gap-x-3`}
-    >
-      <div className="flex h-16 items-center sm:h-20 md:h-24 short:h-14">
-        <BrandMark size="nav" />
+    <header className={`${SITE_CONTAINER} pt-[env(safe-area-inset-top)]`}>
+      <div className="grid h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-3 sm:h-20 md:h-24 md:gap-x-4 short:h-14">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          {back}
+          <BrandMark size="nav" />
+        </div>
+        <div className="flex justify-center short:hidden">
+          <FlowStepper screen={screen} />
+        </div>
+        <div className="col-start-3 flex justify-end">
+          <StepIndicator screen={screen} stepClassName="text-accent-deep" className={`md:hidden short:block ${STEP_PILL_CLASS_NAME}`} />
+        </div>
       </div>
-      <div className="flex justify-center short:hidden">
-        <FlowStepper screen={screen} />
-      </div>
-      <div className="col-start-3 row-start-1 flex justify-end">
-        <StepIndicator screen={screen} stepClassName="text-accent-deep" className={`md:hidden short:block ${STEP_PILL_CLASS_NAME}`} />
-        {/* Balances the logo so the stepper sits centered. */}
-        <span aria-hidden="true" className="hidden w-14 md:block lg:w-20 short:hidden" />
-      </div>
-      {back}
     </header>
   )
 }

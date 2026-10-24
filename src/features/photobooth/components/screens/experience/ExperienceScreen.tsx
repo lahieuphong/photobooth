@@ -1,7 +1,6 @@
 'use client'
 
-import { ArrowLeft, ArrowRight } from 'lucide-react'
-import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import BrandPage from '@/src/features/photobooth/components/shared/brand/BrandPage'
@@ -9,9 +8,8 @@ import BubbleHeading from '@/src/features/photobooth/components/shared/brand/Bub
 import PastelBackdrop from '@/src/features/photobooth/components/shared/brand/PastelBackdrop'
 import { Doodle, HeartSticker, StarSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
 import Button from '@/src/features/photobooth/components/shared/controls/Button'
-import SiteNav from '@/src/features/photobooth/components/shared/layout/SiteNav'
+import FlowHeader from '@/src/features/photobooth/components/shared/layout/FlowHeader'
 import { SITE_CONTAINER } from '@/src/features/photobooth/components/shared/layout/siteLayout'
-import StepIndicator, { STEP_PILL_CLASS_NAME } from '@/src/features/photobooth/components/shared/layout/StepIndicator'
 import {
   PHOTOBOOTH_EXPERIENCES,
   getExperience,
@@ -140,34 +138,13 @@ export default function ExperienceScreen() {
 
   return (
     <BrandPage>
-      <SiteNav page="experience" />
-
-      {/* At least one screen tall (minus the sticky nav), so the action bar rests at the bottom on large displays. */}
-      <main className="relative isolate flex min-h-[calc(100dvh-4rem)] flex-col sm:min-h-[calc(100dvh-5rem)] lg:min-h-[calc(100dvh-6rem)] short:min-h-[calc(100dvh-3.5rem)]">
+      {/* At least one screen tall, so the action bar rests at the bottom on large displays. */}
+      <main className="relative isolate flex min-h-full flex-col">
         <PastelBackdrop />
+        <FlowHeader screen={SCREEN} />
 
         <div className={`${SITE_CONTAINER} flex-1 pb-2`}>
-          <div className="flex items-center justify-between gap-3 pt-2 sm:pt-4 short:pt-1">
-            {SCREEN.backHref ? (
-              <Link
-                href={SCREEN.backHref}
-                scroll={false}
-                className="-ml-3 inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-[14px] whitespace-nowrap font-semibold text-cocoa/80 transition-colors hover:bg-white/70 hover:text-cocoa focus-visible:outline-2 focus-visible:outline-accent"
-              >
-                <ArrowLeft aria-hidden="true" size={18} />
-                Quay lại
-              </Link>
-            ) : (
-              <span />
-            )}
-            <StepIndicator
-              screen={SCREEN}
-              stepClassName="text-accent-deep"
-              className={STEP_PILL_CLASS_NAME}
-            />
-          </div>
-
-          <div className="mt-3 animate-rise lg:mt-2 lg:flex lg:items-end lg:justify-between lg:gap-8 short:mt-1">
+          <div className="mt-2 animate-rise sm:mt-4 lg:mt-2 lg:flex lg:items-end lg:justify-between lg:gap-8 short:mt-1">
             <div className="min-w-0">
               <BubbleHeading
                 id="experience-title"

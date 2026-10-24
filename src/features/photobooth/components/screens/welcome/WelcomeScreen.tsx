@@ -9,7 +9,7 @@ import { AboutSection, ExperienceShowcase, FrameShowcase } from './WelcomeSectio
 export default function WelcomeScreen() {
   return (
     <BrandPage>
-      <SiteNav page="welcome" />
+      <SiteNav />
       <main>
         <WelcomeHero />
         <ExperienceShowcase />

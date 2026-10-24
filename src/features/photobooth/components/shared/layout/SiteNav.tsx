@@ -1,21 +1,12 @@
 'use client'
 
 import { ArrowRight, Menu, X } from 'lucide-react'
-import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import Button from '@/src/features/photobooth/components/shared/controls/Button'
 import BrandMark from '@/src/features/photobooth/components/shared/layout/BrandMark'
 import { PHOTOBOOTH_ROUTES } from '@/src/features/photobooth/config/routes'
 import SectionLink from './SectionLink'
 import { SITE_CONTAINER, WELCOME_SECTIONS, type WelcomeSectionId } from './siteLayout'
-
-type SiteNavProps = {
-  /**
-   * On Welcome the links scroll to its sections. On Experience they lead back to
-   * those sections, except "Trải nghiệm", which is the Experience page itself.
-   */
-  page: 'welcome' | 'experience'
-}
 
 const MENU_ID = 'site-menu'
 
@@ -25,24 +16,15 @@ function isWelcomeSection(value: string): value is WelcomeSectionId {
   return WELCOME_SECTIONS.some((section) => section.id === value)
 }
 
-function getHref(id: WelcomeSectionId) {
-  if (id === 'trang-chu') return PHOTOBOOTH_ROUTES.WELCOME
-  if (id === 'trai-nghiem') return PHOTOBOOTH_ROUTES.EXPERIENCE
-  return `${PHOTOBOOTH_ROUTES.WELCOME}#${id}`
-}
-
-export default function SiteNav({ page }: SiteNavProps) {
-  const isWelcome = page === 'welcome'
+/** Welcome's own nav: section links, scroll spy, a phone menu and the "Bắt đầu" CTA. */
+export default function SiteNav() {
   const headerRef = useRef<HTMLElement>(null)
   const toggleRef = useRef<HTMLButtonElement>(null)
-  const [activeId, setActiveId] = useState<WelcomeSectionId>(isWelcome ? WELCOME_SECTIONS[0].id : 'trai-nghiem')
+  const [activeId, setActiveId] = useState<WelcomeSectionId>(WELCOME_SECTIONS[0].id)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   useEffect(() => {
-    if (!isWelcome) return
-
-    // Arriving from another page via /welcome/#section: the sections scroll inside
-    // BrandPage, so jump there explicitly once they exist.
+    // Opened as /welcome/#section: the sections scroll inside BrandPage, so jump there explicitly.
     const hash = window.location.hash.slice(1)
     if (isWelcomeSection(hash)) document.getElementById(hash)?.scrollIntoView({ block: 'start' })
 
@@ -60,7 +42,7 @@ export default function SiteNav({ page }: SiteNavProps) {
       if (section) observer.observe(section)
     }
     return () => observer.disconnect()
-  }, [isWelcome])
+  }, [])
 
   useEffect(() => {
     if (!isMenuOpen) return
@@ -83,18 +65,10 @@ export default function SiteNav({ page }: SiteNavProps) {
   }, [isMenuOpen])
 
   function renderLink(id: WelcomeSectionId, label: string, className: string, onNavigate?: () => void) {
-    const isActive = id === activeId
-    if (isWelcome) {
-      return (
-        <SectionLink to={id} onNavigate={onNavigate} aria-current={isActive ? 'true' : undefined} className={className}>
-          {label}
-        </SectionLink>
-      )
-    }
     return (
-      <Link href={getHref(id)} onClick={onNavigate} aria-current={isActive ? 'page' : undefined} className={className}>
+      <SectionLink to={id} onNavigate={onNavigate} aria-current={id === activeId ? 'true' : undefined} className={className}>
         {label}
-      </Link>
+      </SectionLink>
     )
   }
 
@@ -124,15 +98,12 @@ export default function SiteNav({ page }: SiteNavProps) {
         </nav>
 
         <div className="flex items-center gap-2 justify-self-end">
-          {/* Experience is the start of the flow already, so it needs no "Bắt đầu". */}
-          {isWelcome ? (
-            <div className="hidden sm:block">
-              <Button href={PHOTOBOOTH_ROUTES.EXPERIENCE} className="hover:-translate-y-0.5">
-                Bắt đầu
-                <ArrowRight aria-hidden="true" size={18} />
-              </Button>
-            </div>
-          ) : null}
+          <div className="hidden sm:block">
+            <Button href={PHOTOBOOTH_ROUTES.EXPERIENCE} className="hover:-translate-y-0.5">
+              Bắt đầu
+              <ArrowRight aria-hidden="true" size={18} />
+            </Button>
+          </div>
           <button
             ref={toggleRef}
             type="button"
@@ -167,12 +138,10 @@ export default function SiteNav({ page }: SiteNavProps) {
                 </li>
               ))}
             </ul>
-            {isWelcome ? (
-              <Button href={PHOTOBOOTH_ROUTES.EXPERIENCE} variant="candy" size="lg" className="mt-3 w-full sm:hidden">
-                Bắt đầu
-                <ArrowRight aria-hidden="true" size={18} />
-              </Button>
-            ) : null}
+            <Button href={PHOTOBOOTH_ROUTES.EXPERIENCE} variant="candy" size="lg" className="mt-3 w-full sm:hidden">
+              Bắt đầu
+              <ArrowRight aria-hidden="true" size={18} />
+            </Button>
           </nav>
         </div>
       ) : null}
