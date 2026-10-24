@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, Download, PenLine, RotateCcw, ShieldCheck } from 'lucide-react'
+import { Download, PenLine, RotateCcw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, type CSSProperties } from 'react'
 import BrandPage from '@/src/features/photobooth/components/shared/brand/BrandPage'
@@ -33,11 +33,9 @@ import { beginBusy } from '@/src/features/photobooth/services/session/activity'
 import { endSession } from '@/src/features/photobooth/services/storage/photoStore'
 import { releaseSession } from '@/src/features/photobooth/services/storage/sessionOwnership'
 import { clearStoredSession, setSessionNotice } from '@/src/features/photobooth/services/storage/sessionStorage'
-import { Confetti, OtherLooks, RESULT_CARD_CLASS_NAME, ResultDetails } from './ResultParts'
+import { Confetti, ExportStatus, OtherLooks, RestartWarning, ResultDetails, type ExportState } from './ResultParts'
 
 const SCREEN = PHOTOBOOTH_SCREENS.result
-
-type ExportState = { status: 'idle' } | { status: 'working' } | { status: 'done'; fileName: string } | { status: 'error'; message: string }
 
 function describeExportError(error: unknown) {
   const code = error instanceof Error ? error.message : ''
@@ -156,7 +154,7 @@ export default function ResultScreen() {
             'short:grid short:grid-cols-[minmax(0,calc(var(--print-max-h)*var(--print-ratio)+2rem))_minmax(0,1fr)] short:grid-rows-[auto_1fr] short:gap-x-6 short:gap-y-3 short:pt-2 short:[--print-max-h:calc(100svh-6rem)]',
           ].join(' ')}
         >
-          <section aria-labelledby="result-title" className="relative animate-rise text-center sm:text-left md:col-start-2 md:row-start-1 short:col-start-2 short:row-start-1">
+          <section aria-labelledby="result-title" className="relative animate-rise text-center max-md:-order-2 sm:text-left md:col-start-2 md:row-start-1 short:col-start-2 short:row-start-1">
             <Confetti />
             <BubbleHeading
               id="result-title"
@@ -206,21 +204,27 @@ export default function ResultScreen() {
 
           {/* Joins the page column on phones (so the download bar can stick to the screen), its own column from md. */}
           <div className="contents md:col-start-2 md:row-start-2 md:flex md:min-w-0 md:animate-rise md:flex-col md:gap-4 md:[animation-delay:140ms] short:col-start-2 short:row-start-2 short:flex short:min-w-0 short:flex-col short:gap-3">
+            {/* On phones it moves up under the heading: recovering is the only way forward then. */}
             {hasMissing ? (
-              <MissingPhotosNotice
-                missingCount={missingIds.length}
-                unreadableCount={unreadableIds.length}
-                onRecover={handleRecover}
-                onRetry={retry}
-                disabled={isBusy}
-              />
+              <div className="max-md:-order-1">
+                <MissingPhotosNotice
+                  missingCount={missingIds.length}
+                  unreadableCount={unreadableIds.length}
+                  onRecover={handleRecover}
+                  onRetry={retry}
+                  disabled={isBusy}
+                />
+              </div>
             ) : null}
 
             {/* Sticky on phones so saving is always one tap away; in flow, so it never covers anything. */}
             <div className="sticky bottom-0 z-20 -mx-4 border-t border-blush-deep/50 bg-petal/90 px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur-md sm:-mx-8 sm:px-8 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
               <Button onClick={() => void handleDownload()} disabled={!canExport} variant="candy" size="lg" className="h-16 w-full text-[18px]">
                 {isExporting ? (
-                  'Đang tạo ảnh…'
+                  <>
+                    <span aria-hidden="true" className="size-5 animate-spin rounded-full border-[3px] border-white/35 border-t-white" />
+                    Đang tạo ảnh…
+                  </>
                 ) : (
                   <>
                     <Download aria-hidden="true" size={20} />
@@ -229,28 +233,7 @@ export default function ResultScreen() {
                 )}
               </Button>
             </div>
-            <p
-              role={exportState.status === 'error' ? 'alert' : 'status'}
-              className={`-mt-1.5 flex min-h-[1.5em] items-start justify-center gap-1.5 text-center text-[13px] leading-snug sm:justify-start sm:text-left ${
-                exportState.status === 'error' ? 'font-medium text-danger' : 'text-ink-soft'
-              }`}
-            >
-              {exportState.status === 'done' ? (
-                <>
-                  <Check aria-hidden="true" size={15} className="mt-0.5 shrink-0 text-success" />
-                  <span>
-                    Đã tạo {exportState.fileName} và chuyển cho trình duyệt tải về. Nếu không thấy tệp trong mục Tải về, hãy bấm tải lại.
-                  </span>
-                </>
-              ) : exportState.status === 'error' ? (
-                exportState.message
-              ) : (
-                <>
-                  <ShieldCheck aria-hidden="true" size={15} className="mt-0.5 shrink-0 text-accent" />
-                  <span>Ảnh được tạo ngay trên máy này, không tải lên đâu cả.</span>
-                </>
-              )}
-            </p>
+            <ExportStatus state={exportState} />
 
             {actionError ? (
               <p role="alert" className="rounded-2xl bg-white/85 px-4 py-3 text-[13px] font-medium text-danger ring-1 ring-danger/30">
@@ -293,18 +276,7 @@ export default function ResultScreen() {
                 {isLeaving && isConfirmingRestart ? 'Đang xóa…' : isConfirmingRestart ? 'Xác nhận' : 'Chụp phiên mới'}
               </Button>
             </div>
-            {isConfirmingRestart ? (
-              <p className={`px-4 py-3 text-[13px] leading-snug text-ink-soft ${RESULT_CARD_CLASS_NAME}`}>
-                Ảnh của phiên này sẽ bị xóa khỏi bộ nhớ trình duyệt; ảnh PNG đã tải về vẫn được giữ. Hãy tải ảnh về trước nếu muốn giữ.{' '}
-                <button
-                  type="button"
-                  className="inline-flex min-h-11 items-center font-semibold text-cocoa underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-accent"
-                  onClick={() => setIsConfirmingRestart(false)}
-                >
-                  Hủy
-                </button>
-              </p>
-            ) : null}
+            {isConfirmingRestart ? <RestartWarning onCancel={() => setIsConfirmingRestart(false)} disabled={isLeaving} /> : null}
           </div>
         </div>
       </main>

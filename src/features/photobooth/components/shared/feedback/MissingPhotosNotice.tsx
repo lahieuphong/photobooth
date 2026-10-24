@@ -29,11 +29,13 @@ export default function MissingPhotosNotice({
 
   return (
     // Stacked at every width: it also lives in the narrow Studio/Result sidebars.
-    <div role="alert" className="flex shrink-0 flex-col gap-3 rounded-[18px] border border-danger/25 bg-white p-4">
+    <div role="alert" className="flex shrink-0 flex-col gap-3 rounded-[24px] bg-white/90 p-4 shadow-[0_14px_30px_-22px_rgba(74,29,36,0.45)] ring-1 ring-danger/25 sm:p-5">
       <div className="flex min-w-0 gap-3">
-        <TriangleAlert aria-hidden="true" size={20} className="mt-0.5 shrink-0 text-danger" />
+        <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full bg-danger/10 text-danger">
+          <TriangleAlert size={18} />
+        </span>
         <div className="min-w-0">
-          <p className="text-[14px] font-semibold text-ink">{title}</p>
+          <p className="font-bubble text-[16px] font-bold text-cocoa">{title}</p>
           <p className="mt-0.5 text-[13px] leading-snug text-ink-soft">
             {unreadableCount > 0
               ? 'Trình duyệt chưa đọc được ảnh lúc này (có thể do thiếu bộ nhớ). Ảnh có thể vẫn còn — hãy thử lại trước khi chụp lại.'
@@ -43,12 +45,12 @@ export default function MissingPhotosNotice({
       </div>
       <div className="flex flex-wrap gap-2">
         {unreadableCount > 0 ? (
-          <Button variant="secondary" onClick={onRetry} disabled={disabled}>
+          <Button variant="bubble" onClick={onRetry} disabled={disabled}>
             <RefreshCw aria-hidden="true" size={16} />
             Thử lại
           </Button>
         ) : null}
-        <Button onClick={onRecover} disabled={disabled}>
+        <Button variant="candy" onClick={onRecover} disabled={disabled}>
           <RotateCcw aria-hidden="true" size={16} />
           Chụp lại {total} ảnh
         </Button>
