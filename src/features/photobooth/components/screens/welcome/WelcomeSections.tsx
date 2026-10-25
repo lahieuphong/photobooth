@@ -5,7 +5,8 @@ import { HeartSticker, StarSticker } from '@/src/features/photobooth/components/
 import Button from '@/src/features/photobooth/components/shared/controls/Button'
 import PhotoComposition from '@/src/features/photobooth/components/shared/composition/PhotoComposition'
 import { SITE_CONTAINER } from '@/src/features/photobooth/components/shared/layout/siteLayout'
-import { PHOTOBOOTH_EXPERIENCES } from '@/src/features/photobooth/config/experiences'
+import { PHOTOBOOTH_EXPERIENCES, type PhotoboothExperienceId } from '@/src/features/photobooth/config/experiences'
+import { getDemoPhotoUrls } from '@/src/features/photobooth/config/demoPhotos'
 import { PHOTOBOOTH_ROUTES } from '@/src/features/photobooth/config/routes'
 import { getFrame, type PhotoboothFrameId } from '@/src/features/photobooth/domain/frames'
 import type { PhotoboothLayoutId } from '@/src/features/photobooth/domain/layouts'
@@ -16,10 +17,16 @@ import { PHOTOBOOTH_LOOKS, type PhotoboothLookId } from '@/src/features/photoboo
 
 const SECTION_CLASS_NAME = 'relative scroll-mt-20 py-16 focus:outline-none sm:scroll-mt-24 sm:py-20 lg:scroll-mt-28 lg:py-24'
 
-const FRAME_SAMPLES: Array<{ frameId: PhotoboothFrameId; layoutId: PhotoboothLayoutId; lookId: PhotoboothLookId; tilt: string }> = [
-  { frameId: 'minimal', layoutId: 'grid-4', lookId: 'warm', tilt: '-rotate-3' },
-  { frameId: 'editorial', layoutId: 'vertical-4', lookId: 'mono', tilt: 'rotate-0' },
-  { frameId: 'play', layoutId: 'grid-6', lookId: 'flash', tilt: 'rotate-3' },
+const FRAME_SAMPLES: Array<{
+  frameId: PhotoboothFrameId
+  layoutId: PhotoboothLayoutId
+  lookId: PhotoboothLookId
+  demoExperienceId: PhotoboothExperienceId
+  tilt: string
+}> = [
+  { frameId: 'minimal', layoutId: 'grid-4', lookId: 'warm', demoExperienceId: 'quick-4', tilt: '-rotate-3' },
+  { frameId: 'editorial', layoutId: 'vertical-4', lookId: 'mono', demoExperienceId: 'editorial', tilt: 'rotate-0' },
+  { frameId: 'play', layoutId: 'grid-6', lookId: 'flash', demoExperienceId: 'story-6', tilt: 'rotate-3' },
 ]
 
 const VALUES = [
@@ -80,7 +87,7 @@ export function ExperienceShowcase() {
                     layoutId={experience.layoutId}
                     frameId={experience.defaultFrameId}
                     lookId={experience.defaultLookId}
-                    placeholder
+                    photoUrls={getDemoPhotoUrls(experience.id)}
                     imageSizes="160px"
                   />
                 </div>
@@ -126,14 +133,20 @@ export function FrameShowcase() {
           <HeartSticker className="absolute -top-6 left-[-2%] z-10 w-8 -rotate-12 sm:w-12" />
           <StarSticker className="absolute right-[-2%] -bottom-4 z-10 w-8 sm:w-12" />
           <ul className="grid grid-cols-3 gap-3 sm:gap-8">
-            {FRAME_SAMPLES.map(({ frameId, layoutId, lookId, tilt }) => {
+            {FRAME_SAMPLES.map(({ frameId, layoutId, lookId, demoExperienceId, tilt }) => {
               const frame = getFrame(frameId)
               return (
                 <li key={frameId} className="flex flex-col items-center text-center">
                   <div
                     className={`w-full overflow-hidden rounded-[6px] shadow-[0_22px_40px_-18px_rgba(74,29,36,0.45)] ring-4 ring-white transition-[rotate,translate] duration-300 ease-out-soft hover:-translate-y-1 hover:rotate-0 sm:rounded-[10px] sm:ring-[6px] ${tilt}`}
                   >
-                    <PhotoComposition layoutId={layoutId} frameId={frameId} lookId={lookId} placeholder imageSizes="(max-width: 640px) 30vw, 280px" />
+                    <PhotoComposition
+                      layoutId={layoutId}
+                      frameId={frameId}
+                      lookId={lookId}
+                      photoUrls={getDemoPhotoUrls(demoExperienceId)}
+                      imageSizes="(max-width: 640px) 30vw, 280px"
+                    />
                   </div>
                   <h3 className="mt-5 font-bubble text-[16px] font-bold text-cocoa sm:text-[20px]">{frame.label}</h3>
                   <p className="mt-1 hidden text-[13px] text-ink-soft sm:block">{frame.description}</p>

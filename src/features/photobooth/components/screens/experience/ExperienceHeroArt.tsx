@@ -1,5 +1,6 @@
+import Image from 'next/image'
 import { CameraSticker, Doodle, HeartSticker, StarSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
-import { PlaceholderShot } from '@/src/features/photobooth/components/shared/composition/PhotoComposition'
+import { getDemoPhotoUrls } from '@/src/features/photobooth/config/demoPhotos'
 
 const POLAROID_CLASS_NAME =
   'absolute w-[21%] rounded-[4px] bg-white p-[1.6%] pb-[5%] shadow-[0_16px_28px_-14px_rgba(74,29,36,0.45)]'
@@ -10,12 +11,12 @@ export default function ExperienceHeroArt({ className = '' }: { className?: stri
     <div aria-hidden="true" className={`relative aspect-[2.3/1] w-full max-w-108 ${className}`}>
       <div className={`${POLAROID_CLASS_NAME} top-[10%] left-[34%] -rotate-8`}>
         <div className="relative aspect-square overflow-hidden rounded-[2px]">
-          <PlaceholderShot index={2} />
+          <Image src={getDemoPhotoUrls('quick-4')[0]} alt="" fill sizes="90px" className="object-cover" draggable={false} />
         </div>
       </div>
       <div className={`${POLAROID_CLASS_NAME} top-[16%] left-[50%] rotate-8`}>
         <div className="relative aspect-square overflow-hidden rounded-[2px]">
-          <PlaceholderShot index={1} />
+          <Image src={getDemoPhotoUrls('duo')[3]} alt="" fill sizes="90px" className="object-cover" draggable={false} />
         </div>
       </div>
 

@@ -92,3 +92,31 @@ Production builds use the base path `/photobooth`; CI passes the real Pages path
 
 CI order: install → typecheck → lint → unit tests → build → static export check → E2E →
 deploy. Pull requests run every gate but never deploy; a failing gate blocks the deploy.
+
+## Demo photos
+
+Welcome and Experience use 22 local WebP sample photos (4 Quick 4, 4 Editorial,
+4 Duo, 6 Story 6 and 4 Play). Quick 4 uses the gentle smile / peace sign / cheek
+wink / happy smile collection; Play uses the V-sign wink / laugh / pout /
+finger-heart collection. Demo URLs are kept in `config/demoPhotos.ts` and never
+enter camera capture, session storage or PNG export.
+
+Only optimized photos in `public/images/demo/` are published. Original collections
+stay in the ignored `design-inputs/` directory. `scripts/demo-collections.json`
+records their original filenames, SHA-256 checksums, photo corners, perspective
+correction and small edge trims that remove printed stickers.
+
+To reproduce the assets, supply the five original collections in a local folder:
+
+```bash
+corepack yarn@1.22.22 demo:assets --import-from ./original-collections
+```
+
+The processor preserves original files and refuses to replace differing existing
+outputs. To review a specific correction separately:
+
+```bash
+corepack yarn@1.22.22 demo:assets --only editorial/01,duo/01,duo/04 --output-dir ./test-results/demo-review
+```
+
+No original photos, QA screenshots or contact sheets are needed for a normal build.

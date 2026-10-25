@@ -44,3 +44,6 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /blob-report/
+
+# Local source collections; optimized demo photos and their manifest are tracked.
+/design-inputs/

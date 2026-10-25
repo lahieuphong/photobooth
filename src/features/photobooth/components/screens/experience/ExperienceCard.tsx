@@ -4,6 +4,7 @@ import { PASTEL_TILE_TONES } from '@/src/features/photobooth/components/shared/b
 import { HeartSticker, StarSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
 import PhotoComposition from '@/src/features/photobooth/components/shared/composition/PhotoComposition'
 import type { PhotoboothExperience } from '@/src/features/photobooth/config/experiences'
+import { getDemoPhotoUrls } from '@/src/features/photobooth/config/demoPhotos'
 import { getLayout } from '@/src/features/photobooth/domain/layouts'
 
 type ExperienceCardProps = {
@@ -68,7 +69,7 @@ export default function ExperienceCard({ experience, index, isSelected, onSelect
             layoutId={experience.layoutId}
             frameId={experience.defaultFrameId}
             lookId={experience.defaultLookId}
-            placeholder
+            photoUrls={getDemoPhotoUrls(experience.id)}
             imageSizes="(min-width: 1024px) 170px, 110px"
           />
         </span>
