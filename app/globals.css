@@ -25,6 +25,21 @@
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Sweet Motion: shared timing, separate channels for entrance, hover and float. */
+:root {
+  --motion-micro: 160ms;
+  --motion-button: 200ms;
+  --motion-select: 240ms;
+  --motion-card: 420ms;
+  --motion-page: 400ms;
+  --motion-reveal: 560ms;
+  --motion-ambient: 8s;
+  --motion-celebrate: 900ms;
+  --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-ease-soft: cubic-bezier(0.25, 0.8, 0.25, 1);
+  --motion-ease-pop: cubic-bezier(0.2, 1.35, 0.45, 1);
+}
+
 /* Phones held sideways: too short for stacked camera + controls, so screens switch to two columns. */
 @custom-variant short (@media (orientation: landscape) and (max-height: 540px));
 /* Wide enough for side-by-side hero columns: laptops, or any phone held sideways. */
@@ -120,7 +135,7 @@
     translate: 0 0;
   }
   to {
-    translate: 0 -10px;
+    translate: 0 var(--float-distance, -5px);
   }
 }
 
@@ -130,17 +145,17 @@
     translate: 0 0;
   }
   50% {
-    translate: 0 5px;
+    translate: 0 3px;
   }
 }
 
 /* Uses `scale`, so it composes with Tailwind's `translate-*` hover lift. */
 @keyframes photobooth-select {
   0% {
-    scale: 0.97;
+    scale: 0.98;
   }
   55% {
-    scale: 1.025;
+    scale: 1.012;
   }
   100% {
     scale: 1;
@@ -159,7 +174,7 @@
 @keyframes photobooth-pop {
   from {
     opacity: 0;
-    transform: scale(1.25);
+    transform: scale(1.15);
   }
   to {
     opacity: 1;
@@ -168,24 +183,24 @@
 }
 
 .animate-rise {
-  animation: photobooth-rise 520ms var(--ease-out-soft) both;
+  animation: photobooth-rise var(--motion-page) var(--motion-ease-out) backwards;
 }
 
 .animate-flash {
-  animation: photobooth-flash 380ms ease-out both;
+  animation: photobooth-flash 240ms ease-out both;
 }
 
 /* Animates `translate`, so it composes with Tailwind's `rotate-*` on the same element. */
 .animate-float {
-  animation: photobooth-float 3.8s ease-in-out infinite alternate;
+  animation: photobooth-float var(--motion-ambient) ease-in-out infinite alternate;
 }
 
 .animate-nudge {
-  animation: photobooth-nudge 1.8s ease-in-out infinite;
+  animation: photobooth-nudge 6s ease-in-out infinite;
 }
 
 .animate-select {
-  animation: photobooth-select 340ms var(--ease-out-soft) both;
+  animation: photobooth-select var(--motion-select) var(--motion-ease-pop) backwards;
 }
 
 /*
@@ -212,19 +227,113 @@
 }
 
 .animate-pop {
-  animation: photobooth-pop 360ms var(--ease-out-soft) both;
+  animation: photobooth-pop 280ms var(--motion-ease-out) backwards;
+}
+
+@keyframes sweet-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sweet-paper {
+  from { opacity: 0; transform: translateY(12px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes sweet-panel {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sweet-image {
+  from { opacity: 0.35; }
+  to { opacity: 1; }
+}
+
+@keyframes sweet-confetti {
+  0% { opacity: 0; transform: translateY(8px) scale(0.5); }
+  35% { opacity: 1; transform: translateY(-8px) scale(1.1); }
+  100% { opacity: 0.8; transform: translateY(0) scale(1); }
+}
+
+@keyframes sweet-depth {
+  from { opacity: 0.6; transform: scale(0.99); }
+  to { opacity: 0.9; transform: scale(1.02); }
+}
+
+.motion-header { animation: sweet-fade 200ms var(--motion-ease-soft) backwards; }
+.motion-fade, .motion-camera-enter { animation: sweet-fade var(--motion-page) var(--motion-ease-soft) backwards; }
+.motion-paper { animation: sweet-paper var(--motion-card) var(--motion-ease-out) backwards; }
+.motion-panel { animation: sweet-panel 220ms var(--motion-ease-out) backwards; }
+.motion-image-loaded { animation: sweet-image 180ms var(--motion-ease-soft) backwards; }
+.motion-confetti { animation: sweet-confetti var(--motion-celebrate) var(--motion-ease-out) backwards; }
+.motion-depth { animation: sweet-depth 10s ease-in-out infinite alternate; }
+.motion-parallax { translate: 0 var(--parallax-y, 0px); }
+
+/* Both the outline copy and actual headline use the same line sequence. */
+.motion-lines > :is(p, h1) > span {
+  animation: photobooth-rise var(--motion-card) var(--motion-ease-out) backwards;
+  animation-delay: 70ms;
+}
+.motion-lines > :is(p, h1) > span:nth-child(2) { animation-delay: 120ms; }
+.motion-lines > :is(p, h1) > span:nth-child(3) { animation-delay: 170ms; }
+
+/* Server content is visible. Only the scroll coordinator may arm an offscreen item. */
+[data-reveal-state="pending"] { opacity: 0; }
+[data-reveal-state="shown"] {
+  animation: photobooth-rise var(--motion-reveal) var(--motion-ease-out) backwards;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+[data-reveal="fade"][data-reveal-state="shown"] { animation-name: sweet-fade; }
+[data-reveal="pop"][data-reveal-state="shown"] { animation-name: sweet-paper; }
+[data-reveal]:focus-within { opacity: 1; animation: none; }
+
+/* No constant compositing hints: idle loops run only while their element is visible. */
+:is(.animate-float, .animate-nudge, .motion-depth) { animation-play-state: paused; }
+:is(.animate-float, .animate-nudge, .motion-depth)[data-motion-active="true"] { animation-play-state: running; }
+[data-motion-hidden="true"] :is(.animate-float, .animate-nudge, .motion-depth) { animation-play-state: paused; }
+[data-motion-hidden="true"] :is(.animate-spin, .animate-pulse) { animation-play-state: paused; }
+
+.sweet-button { transition-duration: var(--motion-button); }
+.sweet-button:active { scale: 0.98; }
+.hero-print { transition: transform var(--motion-button) var(--motion-ease-soft); }
+.hero-strip-center { --float-distance: -3px; --motion-ambient: 9s; }
+.hero-camera { transform-origin: 50% 70%; }
+
+@media (hover: hover) and (pointer: fine) {
+  .hero-collage:hover .hero-print { transform: translateY(-4px); }
+  .hero-collage:hover .hero-strip-center { transform: translateY(-2px); }
+  .hero-collage:hover .hero-camera { transform: rotate(1deg); }
+  .group:hover .motion-sticker { scale: 1.06; }
+}
+.motion-sticker { transition: scale var(--motion-select) var(--motion-ease-pop); }
+
+/* Native dialog keeps its focus trap, Escape and restore behavior. No dismissal timer. */
+.motion-dialog[open] { animation: sweet-fade var(--motion-select) var(--motion-ease-soft) backwards; }
+.motion-dialog[open] > .motion-dialog-photo { animation: sweet-paper var(--motion-select) var(--motion-ease-out) backwards; }
+
+@media (max-width: 767px), (pointer: coarse) {
+  :root { --motion-page: 350ms; --motion-card: 350ms; --motion-reveal: 450ms; }
+  .animate-float { --float-distance: -3px; --motion-ambient: 9s; }
+  .motion-desktop-ambient { animation: none; }
+  .motion-depth { animation: none; }
+  [data-reveal-state="shown"] { animation-delay: 0ms; }
+  .motion-lines > :is(p, h1) > span { animation-delay: 0ms; }
+  .motion-parallax { translate: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-rise,
-  .animate-flash,
-  .animate-pop,
-  .animate-float,
-  .animate-nudge,
-  .animate-select {
-    animation: none;
+  /* Includes responsive Tailwind animations, loading indicators and interactive transitions. */
+  [data-motion-root] *, [data-motion-root] *::before, [data-motion-root] *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
   }
-
+  [data-reveal-state="pending"] { opacity: 1; }
+  .motion-parallax { translate: none; }
+  .sweet-button:active { scale: 1; }
+  .hero-collage:hover .hero-print { transform: none; }
+  .group:hover .motion-sticker { scale: 1; }
   /* Without its fade-out the flash layer would stay opaque and hide the live preview. */
   .animate-flash {
     opacity: 0;

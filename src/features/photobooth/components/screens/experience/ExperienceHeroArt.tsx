@@ -1,4 +1,4 @@
-import Image from 'next/image'
+import Image from '@/src/features/photobooth/components/shared/motion/SoftImage'
 import { CameraSticker, Doodle, HeartSticker, StarSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
 import { getDemoPhotoUrls } from '@/src/features/photobooth/config/demoPhotos'
 

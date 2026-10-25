@@ -1,5 +1,5 @@
 import { ArrowRight, Gift, ShieldCheck, Smartphone } from 'lucide-react'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { PASTEL_TILE_TONES } from '@/src/features/photobooth/components/shared/brand/palette'
 import { HeartSticker, StarSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
 import Button from '@/src/features/photobooth/components/shared/controls/Button'
@@ -58,11 +58,11 @@ type SectionHeadingProps = {
 function SectionHeading({ id, eyebrow, title, children, align = 'center' }: SectionHeadingProps) {
   return (
     <div className={align === 'center' ? 'mx-auto max-w-xl text-center' : 'max-w-xl'}>
-      <p className="text-[11px] font-semibold tracking-[0.24em] text-accent-deep uppercase">{eyebrow}</p>
-      <h2 id={id} className="mt-3 font-bubble text-[clamp(28px,7vw,44px)] leading-[1.15] font-extrabold text-balance text-cocoa">
+      <p data-reveal="fade" className="text-[11px] font-semibold tracking-[0.24em] text-accent-deep uppercase">{eyebrow}</p>
+      <h2 data-reveal="" id={id} className="mt-3 font-bubble text-[clamp(28px,7vw,44px)] leading-[1.15] font-extrabold text-balance text-cocoa">
         {title}
       </h2>
-      {children ? <p className="mt-3 text-[15px] leading-relaxed text-ink-soft sm:text-[16px]">{children}</p> : null}
+      {children ? <p data-reveal="fade" className="mt-3 text-[15px] leading-relaxed text-ink-soft sm:text-[16px]">{children}</p> : null}
     </div>
   )
 }
@@ -79,6 +79,8 @@ export function ExperienceShowcase() {
           {PHOTOBOOTH_EXPERIENCES.map((experience, index) => (
             <li
               key={experience.id}
+              data-reveal=""
+              style={{ '--reveal-delay': `${index * 60}ms` } as CSSProperties}
               className="group flex flex-col rounded-[28px] bg-white p-2.5 shadow-[0_14px_30px_-18px_rgba(176,58,85,0.45)] ring-1 ring-blush-deep/60 transition-[translate,box-shadow] duration-300 ease-out-soft hover:-translate-y-1 hover:shadow-[0_22px_36px_-18px_rgba(176,58,85,0.55)] sm:p-3"
             >
               <div className={`flex aspect-4/5 items-center justify-center rounded-[22px] ${PASTEL_TILE_TONES[index % PASTEL_TILE_TONES.length]}`}>
@@ -130,13 +132,13 @@ export function FrameShowcase() {
         </SectionHeading>
 
         <div className="relative mx-auto mt-12 max-w-4xl">
-          <HeartSticker className="absolute -top-6 left-[-2%] z-10 w-8 -rotate-12 sm:w-12" />
-          <StarSticker className="absolute right-[-2%] -bottom-4 z-10 w-8 sm:w-12" />
+          <HeartSticker className="animate-float motion-desktop-ambient absolute -top-6 left-[-2%] z-10 w-8 -rotate-12 sm:w-12" />
+          <StarSticker className="animate-float motion-desktop-ambient [animation-delay:-3s] absolute right-[-2%] -bottom-4 z-10 w-8 sm:w-12" />
           <ul className="grid grid-cols-3 gap-3 sm:gap-8">
-            {FRAME_SAMPLES.map(({ frameId, layoutId, lookId, demoExperienceId, tilt }) => {
+            {FRAME_SAMPLES.map(({ frameId, layoutId, lookId, demoExperienceId, tilt }, index) => {
               const frame = getFrame(frameId)
               return (
-                <li key={frameId} className="flex flex-col items-center text-center">
+                <li key={frameId} data-reveal="pop" style={{ '--reveal-delay': `${index * 70}ms` } as CSSProperties} className="flex flex-col items-center text-center">
                   <div
                     className={`w-full overflow-hidden rounded-[6px] shadow-[0_22px_40px_-18px_rgba(74,29,36,0.45)] ring-4 ring-white transition-[rotate,translate] duration-300 ease-out-soft hover:-translate-y-1 hover:rotate-0 sm:rounded-[10px] sm:ring-[6px] ${tilt}`}
                   >
@@ -187,8 +189,8 @@ export function AboutSection() {
           </SectionHeading>
 
           <ul className="mt-8 grid gap-3 sm:grid-cols-3 lg:mt-0 lg:grid-cols-1">
-            {VALUES.map((value) => (
-              <li key={value.title} className="flex gap-4 rounded-3xl bg-white/80 p-4 shadow-[0_10px_24px_-18px_rgba(176,58,85,0.6)] sm:flex-col lg:flex-row">
+            {VALUES.map((value, index) => (
+              <li key={value.title} data-reveal="" style={{ '--reveal-delay': `${index * 60}ms` } as CSSProperties} className="flex gap-4 rounded-3xl bg-white/80 p-4 shadow-[0_10px_24px_-18px_rgba(176,58,85,0.6)] sm:flex-col lg:flex-row">
                 <span className="grid size-12 shrink-0 place-items-center rounded-full bg-blush text-accent ring-4 ring-white">{value.icon}</span>
                 <div>
                   <h3 className="font-bubble text-[17px] font-bold text-cocoa">{value.title}</h3>

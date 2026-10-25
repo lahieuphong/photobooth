@@ -45,22 +45,22 @@ export default function WelcomeHero() {
       aria-labelledby="welcome-title"
       className="relative isolate scroll-mt-20 overflow-hidden focus:outline-none sm:scroll-mt-24 lg:scroll-mt-28"
     >
-      <PastelBackdrop />
+      <PastelBackdrop ambient />
 
       <div
         className={`${SITE_CONTAINER} flex flex-col items-center pt-4 pb-16 sm:pt-8 sm:pb-24 split:grid split:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] split:items-center split:gap-x-6 lg:min-h-[min(calc(100svh-6rem),60rem)] lg:gap-x-12 lg:pt-6 lg:pb-32 short:pt-2 short:pb-14`}
       >
         {/* On phones these children interleave with the collage (via `order`); side by side they form one column. */}
         <div className="contents split:flex split:flex-col split:items-start">
-          <div className="order-1 flex animate-rise flex-col items-center text-center split:items-start split:text-left">
-            <p className="inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-1.5 text-[11px] font-semibold tracking-[0.24em] text-accent-deep uppercase shadow-[0_6px_16px_-10px_rgba(176,58,85,0.6)] ring-1 ring-blush-deep">
+          <div className="order-1 flex flex-col items-center text-center split:items-start split:text-left">
+            <p className="motion-fade inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-1.5 text-[11px] font-semibold tracking-[0.24em] text-accent-deep uppercase shadow-[0_6px_16px_-10px_rgba(176,58,85,0.6)] ring-1 ring-blush-deep">
               <Sparkles aria-hidden="true" size={13} />
               Story-first photobooth
             </p>
 
             <BubbleHeading
               id="welcome-title"
-              className="mt-5 font-bubble text-[clamp(34px,11.4vw,60px)] leading-[1.14] font-extrabold tracking-[-0.01em] text-cocoa sm:text-[68px] split:mt-6 lg:text-[clamp(56px,5.3vw,82px)] short:mt-3 short:text-[clamp(30px,5.6vw,42px)]"
+              className="motion-lines mt-5 font-bubble text-[clamp(34px,11.4vw,60px)] leading-[1.14] font-extrabold tracking-[-0.01em] text-cocoa sm:text-[68px] split:mt-6 lg:text-[clamp(56px,5.3vw,82px)] short:mt-3 short:text-[clamp(30px,5.6vw,42px)]"
               decorations={
                 <>
                   <HeartSticker className="absolute top-[34%] right-[-0.2em] w-[0.6em] rotate-12 split:right-[-0.7em]" />
@@ -71,7 +71,7 @@ export default function WelcomeHero() {
               {HEADLINE}
             </BubbleHeading>
 
-            <p className="mt-4 max-w-132 text-[15px] leading-relaxed text-ink-soft sm:text-[17px] split:mt-5 short:mt-3 short:text-[14px]">
+            <p className="motion-fade [animation-delay:120ms] mt-4 max-w-132 text-[15px] leading-relaxed text-ink-soft sm:text-[17px] split:mt-5 short:mt-3 short:text-[14px]">
               Chọn một trải nghiệm, nhìn vào camera — bố cục, ánh sáng và khung ảnh đã được sắp đặt sẵn. Tải ảnh về miễn phí ngay sau khi chụp.
             </p>
           </div>
@@ -103,7 +103,7 @@ export default function WelcomeHero() {
           </ul>
         </div>
 
-        <HeroCollage className="order-2 mt-8 animate-rise [animation-delay:100ms] sm:mt-10 split:order-none split:mt-0" />
+        <HeroCollage className="order-2 mt-8 motion-paper [animation-delay:180ms] sm:mt-10 split:order-none split:mt-0" />
       </div>
 
       <SectionLink

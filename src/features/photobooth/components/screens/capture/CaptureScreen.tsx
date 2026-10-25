@@ -356,7 +356,7 @@ export default function CaptureScreen() {
             </div>
           </div>
 
-          <section aria-label="Camera" className={`animate-rise [animation-delay:80ms] ${AREA.camera}`}>
+          <section aria-label="Camera" className={`motion-camera-enter [animation-delay:80ms] ${AREA.camera}`}>
             <CameraCard>
               <CameraViewport camera={camera} filter={filter} slot={activeSlot} reloadNote={describeReloadLoss(memoryOnly)}>
                 {isCameraReady ? (

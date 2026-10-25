@@ -1,4 +1,4 @@
-import Image from 'next/image'
+import Image from '@/src/features/photobooth/components/shared/motion/SoftImage'
 import PhotoComposition from '@/src/features/photobooth/components/shared/composition/PhotoComposition'
 import { CameraSticker, Doodle, HeartSticker, StarSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
 import { getDemoPhotoUrls } from '@/src/features/photobooth/config/demoPhotos'
@@ -34,9 +34,9 @@ function PhotoStrip() {
 
 export default function HeroCollage({ className = '' }: { className?: string }) {
   return (
-    <div aria-hidden="true" className={`relative mx-auto aspect-20/19 w-full max-w-110 sm:max-w-130 split:max-w-150 short:max-w-80 ${className}`}>
+    <div aria-hidden="true" className={`hero-collage relative mx-auto aspect-20/19 w-full max-w-110 sm:max-w-130 split:max-w-150 short:max-w-80 ${className}`}>
       {/* Soft blob and pedestal the prints stand on. */}
-      <div className="absolute inset-[8%_3%_12%_5%] rounded-[46%_54%_42%_58%/52%_44%_56%_48%] bg-linear-to-br from-[#fbd0da] to-[#fde9ee]" />
+      <div data-parallax="0.025" className="motion-parallax absolute inset-[8%_3%_12%_5%] rounded-[46%_54%_42%_58%/52%_44%_56%_48%] bg-linear-to-br from-[#fbd0da] to-[#fde9ee]" />
       <div className="absolute bottom-[3%] left-[14%] aspect-4/1 w-[72%]">
         <div className="absolute inset-x-0 bottom-0 h-[72%] rounded-[50%] bg-linear-to-b from-[#ee9fb2] to-[#de8098]" />
         <div className="absolute inset-x-0 top-0 h-[72%] rounded-[50%] bg-linear-to-b from-[#fde6eb] to-[#f7c3cf] shadow-[inset_0_-6px_14px_rgba(208,75,103,0.18)]" />
@@ -44,31 +44,31 @@ export default function HeroCollage({ className = '' }: { className?: string }) 
       </div>
 
       <div className="absolute top-[14%] left-[3%] w-[38%] -rotate-9">
-        <div className={`animate-float [animation-delay:-1.2s] ${PRINT_CARD}`}>
+        <div className={`hero-print animate-float [animation-delay:-1.2s] ${PRINT_CARD}`}>
           <PhotoComposition layoutId="grid-4" frameId="minimal" lookId="dreamy" photoUrls={getDemoPhotoUrls('quick-4')} imageSizes="220px" />
         </div>
       </div>
 
       <div className="absolute top-[17%] right-[3%] w-[38%] rotate-8">
-        <div className={`animate-float [animation-delay:-2.6s] ${PRINT_CARD}`}>
+        <div className={`hero-print animate-float [animation-delay:-3.6s] ${PRINT_CARD}`}>
           <PhotoComposition layoutId="grid-6" frameId="play" lookId="clean" photoUrls={getDemoPhotoUrls('story-6')} imageSizes="220px" />
         </div>
       </div>
 
       <div className="@container absolute top-[1%] left-[35%] z-10 w-[30%] rotate-5">
-        <div className="animate-float">
+        <div className="hero-print hero-strip-center animate-float motion-desktop-ambient">
           <PhotoStrip />
         </div>
       </div>
 
-      <div className="absolute bottom-[4%] left-0 z-20 w-[38%] -rotate-8">
-        <CameraSticker className="w-full animate-float [animation-delay:-0.6s]" />
+      <div data-parallax="-0.012" className="motion-parallax absolute bottom-[4%] left-0 z-20 w-[38%] -rotate-8">
+        <CameraSticker className="hero-print hero-camera w-full" />
       </div>
 
-      <HeartSticker className="absolute top-[3%] right-[9%] z-20 w-[13%] rotate-12 animate-float [animation-delay:-1.8s]" />
+      <HeartSticker className="absolute top-[3%] right-[9%] z-20 w-[13%] rotate-12 animate-float motion-desktop-ambient [animation-delay:-1.8s]" />
       <HeartSticker className="absolute bottom-[38%] left-[31%] z-30 w-[7%] -rotate-12" />
-      <StarSticker className="absolute top-[42%] left-[1%] z-20 w-[10%] animate-float [animation-delay:-3s]" />
-      <StarSticker className="absolute top-[54%] right-0 z-20 w-[12%] animate-float [animation-delay:-0.9s]" />
+      <StarSticker className="absolute top-[42%] left-[1%] z-20 w-[10%] animate-float motion-desktop-ambient [animation-delay:-3s]" />
+      <StarSticker className="absolute top-[54%] right-0 z-20 w-[12%]" />
       <StarSticker className="absolute top-[20%] right-[31%] z-20 w-[6%]" />
       <Doodle className="absolute top-0 right-0 w-[9%] rotate-90" />
       <Doodle className="absolute top-[34%] left-[-2%] w-[8%] -rotate-12" />

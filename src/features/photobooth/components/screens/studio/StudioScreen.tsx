@@ -1,7 +1,7 @@
 'use client'
 
 import { ArrowRight, Frame, LayoutGrid, ShieldCheck, Sparkles, type LucideIcon } from 'lucide-react'
-import Image from 'next/image'
+import Image from '@/src/features/photobooth/components/shared/motion/SoftImage'
 import { useRouter } from 'next/navigation'
 import { useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import BrandPage from '@/src/features/photobooth/components/shared/brand/BrandPage'
@@ -141,8 +141,8 @@ export default function StudioScreen() {
             'short:grid short:grid-cols-[minmax(0,calc(var(--print-max-h)*var(--print-ratio)+2rem))_minmax(0,1fr)] short:gap-x-6 short:pt-2 short:[--print-max-h:calc(100svh-6rem)]',
           ].join(' ')}
         >
-          <section aria-label="Xem trước ảnh hoàn chỉnh" className="flex animate-rise flex-col items-center gap-5 md:sticky md:top-4">
-            <div className="relative w-[min(100%,calc(var(--print-max-h)*var(--print-ratio)+2rem))] md:-rotate-1">
+          <section aria-label="Xem trước ảnh hoàn chỉnh" className="flex flex-col items-center gap-5 md:sticky md:top-4">
+            <div className="motion-paper relative w-[min(100%,calc(var(--print-max-h)*var(--print-ratio)+2rem))] md:-rotate-1">
               {/* Washi tape and stickers: decoration around the print, never on it. */}
               <span
                 aria-hidden="true"
@@ -235,7 +235,7 @@ export default function StudioScreen() {
               id="studio-tabpanel"
               role="tabpanel"
               aria-labelledby={`studio-tab-${tab}`}
-              className={`animate-rise p-4 sm:p-5 ${PANEL_CARD_CLASS_NAME}`}
+              className={`motion-panel p-4 sm:p-5 ${PANEL_CARD_CLASS_NAME}`}
             >
               <h2 className="flex items-center gap-2 font-bubble text-[17px] font-bold text-cocoa">
                 <HeartSticker className="w-5" />

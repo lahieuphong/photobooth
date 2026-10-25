@@ -1,4 +1,4 @@
-import Image from 'next/image'
+import Image from '@/src/features/photobooth/components/shared/motion/SoftImage'
 
 /** A captured shot with the session look; explains instead of breaking when the blob is gone. */
 export default function ShotImage({ url, filter, fit, sizes }: { url: string | null; filter: string; fit: 'cover' | 'contain'; sizes: string }) {

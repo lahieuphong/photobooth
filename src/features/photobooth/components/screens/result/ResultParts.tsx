@@ -1,4 +1,5 @@
 import { ArrowRight, CalendarDays, CircleCheck, Frame, Images, LayoutGrid, ShieldCheck, Sparkles, TriangleAlert } from 'lucide-react'
+import type { CSSProperties } from 'react'
 import PhotoComposition from '@/src/features/photobooth/components/shared/composition/PhotoComposition'
 import type { PhotoboothFrameId } from '@/src/features/photobooth/domain/frames'
 import type { PhotoboothLayoutId } from '@/src/features/photobooth/domain/layouts'
@@ -13,14 +14,16 @@ const CONFETTI = [
   'top-[2%] right-[18%] h-3 w-1.5 -rotate-[30deg] bg-[#6fb3b8]',
   'bottom-[14%] right-[4%] h-2.5 w-1.5 rotate-[60deg] bg-accent',
   'bottom-[4%] left-[12%] h-2 w-2 rounded-full bg-[#f28fb0]',
+  'top-[48%] left-[3%] h-2 w-1 rotate-12 bg-sunny',
+  'top-[36%] right-[2%] h-2 w-2 rounded-full bg-blush-deep',
 ]
 
-/** A few static paper bits around the heading; decorative only. */
+/** A single gentle burst of paper bits around the heading; decorative only. */
 export function Confetti() {
   return (
     <span aria-hidden="true" className="pointer-events-none absolute inset-0">
-      {CONFETTI.map((className) => (
-        <span key={className} className={`absolute rounded-[2px] opacity-80 ${className}`} />
+      {CONFETTI.map((className, index) => (
+        <span key={className} style={{ animationDelay: `${index * 35}ms` } as CSSProperties} className={`motion-confetti absolute rounded-[2px] opacity-80 ${className}`} />
       ))}
     </span>
   )
@@ -140,7 +143,7 @@ export function ExportStatus({ state }: { state: ExportState }) {
   if (state.status === 'done') {
     return (
       <p role="status" className="flex items-start gap-2 rounded-2xl bg-[#eaf5ee] px-4 py-3 text-[13px] leading-snug text-cocoa ring-1 ring-success/25">
-        <CircleCheck aria-hidden="true" size={16} className="mt-0.5 shrink-0 text-success" />
+        <CircleCheck aria-hidden="true" size={16} className="animate-select mt-0.5 shrink-0 text-success" />
         <span>
           Đã tạo <span className="font-semibold break-all">{state.fileName}</span> và chuyển cho trình duyệt tải về. Nếu không thấy tệp
           trong mục Tải về, hãy bấm tải lại.
@@ -164,7 +167,7 @@ export function ExportStatus({ state }: { state: ExportState }) {
 /** Explains what "Chụp phiên mới" deletes; the confirm itself stays on that button. */
 export function RestartWarning({ onCancel, disabled }: { onCancel: () => void; disabled: boolean }) {
   return (
-    <div role="status" className="flex gap-3 rounded-[20px] bg-butter px-4 py-3.5 ring-1 ring-cream">
+    <div role="status" className="motion-panel flex gap-3 rounded-[20px] bg-butter px-4 py-3.5 ring-1 ring-cream">
       <TriangleAlert aria-hidden="true" size={18} className="mt-0.5 shrink-0 text-accent-deep" />
       <div className="min-w-0 text-[13px] leading-snug text-cocoa">
         <p className="font-semibold">Bấm “Xác nhận” để bắt đầu phiên mới.</p>

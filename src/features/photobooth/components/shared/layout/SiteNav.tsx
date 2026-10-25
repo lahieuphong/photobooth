@@ -27,6 +27,7 @@ export default function SiteNav() {
     // Opened as /welcome/#section: the sections scroll inside BrandPage, so jump there explicitly.
     const hash = window.location.hash.slice(1)
     if (isWelcomeSection(hash)) document.getElementById(hash)?.scrollIntoView({ block: 'start' })
+    if (typeof IntersectionObserver === 'undefined') return
 
     // Scroll spy: the active section is the one crossing the middle of the viewport.
     const observer = new IntersectionObserver(
@@ -35,7 +36,7 @@ export default function SiteNav() {
           if (entry.isIntersecting && isWelcomeSection(entry.target.id)) setActiveId(entry.target.id)
         }
       },
-      { rootMargin: '-45% 0px -50% 0px' }
+      { root: headerRef.current?.closest('[data-motion-root]') ?? null, rootMargin: '-45% 0px -50% 0px' }
     )
     for (const { id } of WELCOME_SECTIONS) {
       const section = document.getElementById(id)
@@ -73,7 +74,7 @@ export default function SiteNav() {
   }
 
   return (
-    <header ref={headerRef} className="sticky top-0 z-40 bg-petal/80 backdrop-blur-md">
+    <header ref={headerRef} className="motion-header sticky top-0 z-40 bg-petal/80 backdrop-blur-md">
       <div
         className={`${SITE_CONTAINER} flex h-16 items-center justify-between gap-4 sm:h-20 lg:grid lg:h-24 lg:grid-cols-[1fr_auto_1fr] short:h-14`}
       >

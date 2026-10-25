@@ -1,5 +1,5 @@
 import { Check, Sparkles } from 'lucide-react'
-import Image from 'next/image'
+import Image from '@/src/features/photobooth/components/shared/motion/SoftImage'
 import type { CSSProperties } from 'react'
 import type { PhotoboothLayout } from '@/src/features/photobooth/domain/layouts'
 
@@ -64,8 +64,8 @@ export function ShotProgress({ layout, shots, urls, activeShotIndex, isRetake, i
 
       <div aria-hidden="true" className="mt-3 h-2 overflow-hidden rounded-full bg-blush">
         <div
-          className="h-full rounded-full bg-linear-to-r from-[#de5f7b] to-accent-deep transition-[width] duration-500 ease-out-soft"
-          style={{ width: `${(captured / total) * 100}%` }}
+          className="h-full rounded-full bg-linear-to-r from-[#de5f7b] to-accent-deep origin-left transition-transform duration-300 ease-out-soft"
+          style={{ transform: `scaleX(${captured / total})` }}
         />
       </div>
 
@@ -96,7 +96,9 @@ export function ShotProgress({ layout, shots, urls, activeShotIndex, isRetake, i
               style={{ aspectRatio: `${slot.width} / ${slot.height}` }}
             >
               {url && state !== 'current' ? (
-                <Image src={url} alt="" fill unoptimized sizes="80px" className="object-cover" style={{ filter }} />
+                <span className="animate-select absolute inset-0">
+                  <Image src={url} alt="" fill unoptimized sizes="80px" className="object-cover" style={{ filter }} />
+                </span>
               ) : (
                 <span
                   aria-hidden="true"
@@ -108,7 +110,7 @@ export function ShotProgress({ layout, shots, urls, activeShotIndex, isRetake, i
                 </span>
               )}
               {state === 'done' ? (
-                <span aria-hidden="true" className="absolute right-1 bottom-1 grid size-4.5 place-items-center rounded-full bg-success text-white">
+                <span aria-hidden="true" className="absolute right-1 bottom-1 grid animate-select size-4.5 place-items-center rounded-full bg-success text-white">
                   <Check size={11} strokeWidth={3.2} />
                 </span>
               ) : null}

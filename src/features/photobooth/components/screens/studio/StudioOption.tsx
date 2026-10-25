@@ -32,7 +32,7 @@ export default function StudioOption({ isSelected, onClick, label, caption, disa
       <span className={`text-[12px] leading-tight font-semibold ${isSelected ? 'text-accent-deep' : 'text-cocoa/80'}`}>{label}</span>
       {caption ? <span className="-mt-1 text-[10px] leading-tight text-muted">{caption}</span> : null}
       {isSelected ? (
-        <span aria-hidden="true" className="absolute -top-1.5 -right-1.5 grid size-5.5 place-items-center rounded-full bg-accent text-white ring-2 ring-white">
+        <span aria-hidden="true" className="animate-select absolute -top-1.5 -right-1.5 grid size-5.5 place-items-center rounded-full bg-accent text-white ring-2 ring-white">
           <Check size={12} strokeWidth={3.2} />
         </span>
       ) : null}

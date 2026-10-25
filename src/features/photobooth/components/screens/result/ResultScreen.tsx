@@ -72,6 +72,7 @@ export default function ResultScreen() {
   const dateLabel = formatFrameDate(session.createdAt)
   const problemIds = [...missingIds, ...unreadableIds]
   const hasMissing = problemIds.length > 0
+  const isOutputReady = !isLoading && !hasMissing && urls.filter(Boolean).length === session.shotCount
   const isExporting = exportState.status === 'working'
   const canExport = !isLoading && !hasMissing && !isExporting && !isLeaving
 
@@ -154,11 +155,11 @@ export default function ResultScreen() {
             'short:grid short:grid-cols-[minmax(0,calc(var(--print-max-h)*var(--print-ratio)+2rem))_minmax(0,1fr)] short:grid-rows-[auto_1fr] short:gap-x-6 short:gap-y-3 short:pt-2 short:[--print-max-h:calc(100svh-6rem)]',
           ].join(' ')}
         >
-          <section aria-labelledby="result-title" className="relative animate-rise text-center max-md:-order-2 sm:text-left md:col-start-2 md:row-start-1 short:col-start-2 short:row-start-1">
-            <Confetti />
+          <section aria-labelledby="result-title" className="relative text-center max-md:-order-2 sm:text-left md:col-start-2 md:row-start-1 short:col-start-2 short:row-start-1">
+            {isOutputReady ? <Confetti /> : null}
             <BubbleHeading
               id="result-title"
-              className="mx-auto font-bubble text-[clamp(40px,12vw,60px)] leading-[1.05] font-extrabold tracking-[-0.01em] text-accent sm:mx-0 lg:text-[clamp(56px,4.6vw,76px)] short:text-[34px]"
+              className={`${isOutputReady ? 'animate-pop' : ''} mx-auto font-bubble text-[clamp(40px,12vw,60px)] leading-[1.05] font-extrabold tracking-[-0.01em] text-accent sm:mx-0 lg:text-[clamp(56px,4.6vw,76px)] short:text-[34px]`}
               decorations={
                 <>
                   <HeartSticker className="absolute top-[-0.1em] right-[-0.6em] w-[0.5em] rotate-12 animate-float" />
@@ -166,10 +167,10 @@ export default function ResultScreen() {
                 </>
               }
             >
-              Tadaa!
+              {isLoading ? 'Sắp xong…' : 'Tadaa!'}
             </BubbleHeading>
-            <p className="mt-1 font-bubble text-[clamp(19px,5.4vw,26px)] leading-tight font-bold text-cocoa short:text-[18px]">
-              Tác phẩm của bạn đã hoàn thành!
+            <p className="motion-fade mt-1 font-bubble text-[clamp(19px,5.4vw,26px)] leading-tight font-bold text-cocoa short:text-[18px]">
+              {isLoading ? 'Đang chuẩn bị ảnh của bạn…' : hasMissing ? 'Cần khôi phục ảnh gốc để hoàn thành.' : 'Tác phẩm của bạn đã hoàn thành!'}
             </p>
             <p className="mt-2 text-[14px] leading-relaxed text-ink-soft sm:max-w-110 sm:text-[15px] short:hidden">
               Tải về máy để lưu giữ và chia sẻ với bạn bè, hoặc thử một phong cách khác nhé!
@@ -179,9 +180,10 @@ export default function ResultScreen() {
           {/* The print is exactly the exported PNG: no tilt, tape or stickers on top of it (e2e compares them). */}
           <section
             aria-label="Ảnh hoàn chỉnh"
-            className="flex animate-rise justify-center [animation-delay:80ms] md:sticky md:top-4 md:col-start-1 md:row-span-2 md:row-start-1 short:col-start-1 short:row-span-2 short:row-start-1"
+            aria-busy={isLoading}
+            className="flex justify-center md:sticky md:top-4 md:col-start-1 md:row-span-2 md:row-start-1 short:col-start-1 short:row-span-2 short:row-start-1"
           >
-            <div className="relative w-[min(100%,calc(var(--print-max-h)*var(--print-ratio)+2rem))]">
+            <div className={`${isOutputReady ? 'motion-paper' : ''} relative w-[min(100%,calc(var(--print-max-h)*var(--print-ratio)+2rem))]`}>
               <span
                 aria-hidden="true"
                 className="absolute -top-4 left-1/2 z-10 h-6 w-28 -translate-x-1/2 -rotate-3 rounded-[3px] short:hidden bg-[repeating-linear-gradient(45deg,rgb(245_191_204/0.9)_0_6px,rgb(253_230_235/0.9)_6px_12px)] shadow-[0_4px_8px_-4px_rgba(74,29,36,0.3)]"

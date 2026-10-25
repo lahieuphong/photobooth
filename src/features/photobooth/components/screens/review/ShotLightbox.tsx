@@ -43,7 +43,7 @@ export default function ShotLightbox({ index, total, url, filter, onNavigate, on
       ref={dialogRef}
       onClose={onClose}
       aria-label={`Ảnh ${index + 1} trên ${total}`}
-      className="m-0 h-full max-h-none w-full max-w-none flex-col bg-cocoa/95 p-[max(16px,env(safe-area-inset-top))_16px_max(16px,env(safe-area-inset-bottom))] text-white backdrop:bg-transparent open:flex"
+      className="motion-dialog m-0 h-full max-h-none w-full max-w-none flex-col bg-cocoa/95 p-[max(16px,env(safe-area-inset-top))_16px_max(16px,env(safe-area-inset-bottom))] text-white backdrop:bg-transparent open:flex"
     >
       <div className="flex shrink-0 items-center justify-between">
         <p className="font-bubble text-[24px] font-bold tabular-nums">
@@ -60,7 +60,7 @@ export default function ShotLightbox({ index, total, url, filter, onNavigate, on
         </button>
       </div>
 
-      <div className="relative my-4 min-h-0 flex-1 drop-shadow-[0_24px_40px_rgba(0,0,0,0.45)]">
+      <div className="motion-dialog-photo relative my-4 min-h-0 flex-1 drop-shadow-[0_24px_40px_rgba(0,0,0,0.45)]">
         <ShotImage url={url} filter={filter} fit="contain" sizes="100vw" />
       </div>
 

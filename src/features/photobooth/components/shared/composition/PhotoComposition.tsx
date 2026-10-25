@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import SoftImage from '@/src/features/photobooth/components/shared/motion/SoftImage'
 import { getFrame, getFrameOverlayUrl, type PhotoboothFrameId } from '@/src/features/photobooth/domain/frames'
 import {
   PRINT_HEIGHT,
@@ -98,7 +99,7 @@ export default function PhotoComposition({
             }}
           >
             {url ? (
-              <Image
+              <SoftImage
                 src={url}
                 alt=""
                 fill

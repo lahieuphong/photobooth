@@ -102,7 +102,7 @@ export default function FlowHeader({ screen, onBack, backLabel = 'Quay lại' }:
   ) : null
 
   return (
-    <header className={`${SITE_CONTAINER} pt-[env(safe-area-inset-top)]`}>
+    <header className={`motion-header ${SITE_CONTAINER} pt-[env(safe-area-inset-top)]`}>
       <div className="grid h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-3 sm:h-20 md:h-24 md:gap-x-4 short:h-14">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           {back}

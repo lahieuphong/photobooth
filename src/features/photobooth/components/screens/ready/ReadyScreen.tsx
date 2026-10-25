@@ -171,7 +171,7 @@ export default function ReadyScreen() {
             <TipsCard id="ready-tips-title" tips={READY_TIPS} className={`animate-rise [animation-delay:160ms] ${AREA.tips}`} />
           </div>
 
-          <section aria-label="Xem trước camera" className={`animate-rise [animation-delay:80ms] ${AREA.camera}`}>
+          <section aria-label="Xem trước camera" className={`motion-camera-enter [animation-delay:80ms] ${AREA.camera}`}>
             <CameraCard>
               <CameraViewport
                 camera={camera}
@@ -215,7 +215,7 @@ export default function ReadyScreen() {
                     aria-pressed={option === countdown}
                     onClick={() => setPickedCountdown(option)}
                     className={[
-                      'h-12 rounded-2xl text-[15px] font-semibold tabular-nums transition-[background-color,color,box-shadow,translate] duration-200 ease-out-soft',
+                      'sweet-button h-12 rounded-2xl text-[15px] font-semibold tabular-nums transition-[background-color,color,box-shadow,translate,scale] duration-200 ease-out-soft',
                       'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
                       option === countdown
                         ? 'bg-accent text-white shadow-[0_4px_0_#8e2a43]'

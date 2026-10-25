@@ -18,11 +18,11 @@ type ExperienceCardProps = {
 
 /** One small sticker per tile corner, varied by card; decorative and kept clear of the print. */
 const TILE_STICKERS = [
-  <StarSticker key="star" className="absolute bottom-3 left-3 w-5" />,
-  <StarSticker key="star" className="absolute top-3 left-3 w-4 rotate-12" />,
-  <HeartSticker key="heart" className="absolute bottom-4 left-3 w-5 -rotate-12" />,
-  <StarSticker key="star" className="absolute right-3 bottom-3 w-5" />,
-  <HeartSticker key="heart" className="absolute bottom-4 left-3 w-5 rotate-12" />,
+  <StarSticker key="star" className="motion-sticker absolute bottom-3 left-3 w-5" />,
+  <StarSticker key="star" className="motion-sticker absolute top-3 left-3 w-4 rotate-12" />,
+  <HeartSticker key="heart" className="motion-sticker absolute bottom-4 left-3 w-5 -rotate-12" />,
+  <StarSticker key="star" className="motion-sticker absolute right-3 bottom-3 w-5" />,
+  <HeartSticker key="heart" className="motion-sticker absolute bottom-4 left-3 w-5 rotate-12" />,
 ]
 
 const PILL_CLASS_NAME =
@@ -73,7 +73,7 @@ export default function ExperienceCard({ experience, index, isSelected, onSelect
             imageSizes="(min-width: 1024px) 170px, 110px"
           />
         </span>
-        {isSelected ? <HeartSticker className="absolute -top-3 -right-3 z-10 w-8 rotate-12 animate-pop lg:w-10" /> : null}
+        {isSelected ? <HeartSticker className="motion-sticker absolute -top-3 -right-3 z-10 w-8 rotate-12 animate-pop lg:w-10" /> : null}
       </span>
 
       <span className="flex min-w-0 flex-1 flex-col justify-center py-1 lg:justify-start lg:px-1.5 lg:pt-4 lg:pb-1.5">
