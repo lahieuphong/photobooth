@@ -6,7 +6,8 @@ import { useState, type CSSProperties } from 'react'
 import BrandPage from '@/src/features/photobooth/components/shared/brand/BrandPage'
 import BubbleHeading from '@/src/features/photobooth/components/shared/brand/BubbleHeading'
 import PastelBackdrop from '@/src/features/photobooth/components/shared/brand/PastelBackdrop'
-import PerkStrip, { type Perk } from '@/src/features/photobooth/components/shared/brand/PerkStrip'
+import PerkFooter from '@/src/features/photobooth/components/shared/brand/PerkFooter'
+import type { Perk } from '@/src/features/photobooth/components/shared/brand/PerkStrip'
 import { Doodle, HeartSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
 import TipsCard from '@/src/features/photobooth/components/shared/brand/TipsCard'
 import Button from '@/src/features/photobooth/components/shared/controls/Button'
@@ -124,7 +125,7 @@ export default function ReviewScreen() {
 
   return (
     <BrandPage>
-      <main className="relative isolate min-h-full">
+      <main className="relative isolate flex min-h-full flex-col">
         <PastelBackdrop />
         <FlowHeader screen={SCREEN} />
 
@@ -296,9 +297,7 @@ export default function ReviewScreen() {
           </div>
         </div>
 
-        <div className={`${SITE_CONTAINER} hidden pb-[max(32px,env(safe-area-inset-bottom))] md:block short:hidden`}>
-          <PerkStrip perks={PERKS} className="border-t border-blush-deep/50 pt-8" />
-        </div>
+        <PerkFooter perks={PERKS} />
       </main>
 
       {openIndex !== null ? (

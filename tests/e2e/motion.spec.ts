@@ -1,6 +1,7 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { expectCameraReady, expectRoute, goToCapture, readStorage, shoot } from './helpers/app'
 import { holdCameraRequests } from './helpers/fakeCamera'
+import { expectPerkFooterAtEnd } from './helpers/layout'
 
 const VIEWPORTS = [
   [320, 568], [375, 667], [390, 844], [430, 932], [768, 1024],
@@ -17,6 +18,7 @@ async function settle(page: Page) {
 
 async function inspectScreen(page: Page, info: TestInfo, name: string) {
   await settle(page)
+  if (name === 'ready' || name === 'review') await expectPerkFooterAtEnd(page)
   const sizes = await page.locator('[data-motion-root]').evaluate((root) => ({
     width: root.clientWidth, scrollWidth: root.scrollWidth,
     pageWidth: document.documentElement.clientWidth, pageScrollWidth: document.documentElement.scrollWidth,
