@@ -12,7 +12,7 @@ import TipsCard from '@/src/features/photobooth/components/shared/brand/TipsCard
 import CameraCard from '@/src/features/photobooth/components/shared/camera/CameraCard'
 import CameraViewport from '@/src/features/photobooth/components/shared/camera/CameraViewport'
 import Button from '@/src/features/photobooth/components/shared/controls/Button'
-import Spinner from '@/src/features/photobooth/components/shared/feedback/Spinner'
+import ScreenSkeleton from '@/src/features/photobooth/components/shared/feedback/Skeletons'
 import FlowHeader from '@/src/features/photobooth/components/shared/layout/FlowHeader'
 import { SITE_CONTAINER } from '@/src/features/photobooth/components/shared/layout/siteLayout'
 import { getExperience } from '@/src/features/photobooth/config/experiences'
@@ -101,9 +101,9 @@ export default function ReadyScreen() {
     return (
       <BrandPage>
         <main className="relative isolate flex min-h-full flex-col">
-          <PastelBackdrop />
+          <PastelBackdrop stableViewport />
           <FlowHeader screen={SCREEN} />
-          <Spinner className="flex-1" />
+          <ScreenSkeleton screen="ready" />
         </main>
       </BrandPage>
     )
@@ -133,7 +133,7 @@ export default function ReadyScreen() {
   return (
     <BrandPage>
       <main className="relative isolate flex min-h-full flex-col">
-        <PastelBackdrop />
+        <PastelBackdrop stableViewport />
         <FlowHeader screen={SCREEN} />
 
         <div

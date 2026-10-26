@@ -10,7 +10,7 @@ import { CameraSticker, Doodle, HeartSticker, StarSticker } from '@/src/features
 import PhotoComposition from '@/src/features/photobooth/components/shared/composition/PhotoComposition'
 import Button from '@/src/features/photobooth/components/shared/controls/Button'
 import MissingPhotosNotice from '@/src/features/photobooth/components/shared/feedback/MissingPhotosNotice'
-import Spinner from '@/src/features/photobooth/components/shared/feedback/Spinner'
+import ScreenSkeleton, { PrintSkeleton } from '@/src/features/photobooth/components/shared/feedback/Skeletons'
 import FlowHeader from '@/src/features/photobooth/components/shared/layout/FlowHeader'
 import { SITE_CONTAINER } from '@/src/features/photobooth/components/shared/layout/siteLayout'
 import { getExperience } from '@/src/features/photobooth/config/experiences'
@@ -60,9 +60,9 @@ export default function ResultScreen() {
     return (
       <BrandPage>
         <main className="relative isolate flex min-h-full flex-col">
-          <PastelBackdrop />
+          <PastelBackdrop stableViewport />
           <FlowHeader screen={SCREEN} />
-          <Spinner className="flex-1" />
+          <ScreenSkeleton screen="result" />
         </main>
       </BrandPage>
     )
@@ -141,7 +141,7 @@ export default function ResultScreen() {
   return (
     <BrandPage>
       <main className="relative isolate min-h-full">
-        <PastelBackdrop />
+        <PastelBackdrop stableViewport />
         <FlowHeader screen={SCREEN} />
 
         <div
@@ -192,14 +192,17 @@ export default function ResultScreen() {
               <StarSticker className="absolute top-[6%] -right-5 z-10 hidden w-9 sm:block" />
               <CameraSticker className="absolute -right-8 -bottom-7 z-10 hidden w-24 rotate-12 md:block" />
               <div className="rounded-[20px] bg-white p-4 shadow-[0_34px_70px_-34px_rgba(74,29,36,0.6)] ring-1 ring-blush-deep/50">
-                <PhotoComposition
-                  layoutId={session.layoutId}
-                  frameId={session.frameId}
-                  lookId={session.lookId}
-                  photoUrls={urls}
-                  dateLabel={dateLabel}
-                  imageSizes="(max-width: 768px) 70vw, 520px"
-                />
+                <div className="relative">
+                  <PhotoComposition
+                    layoutId={session.layoutId}
+                    frameId={session.frameId}
+                    lookId={session.lookId}
+                    photoUrls={urls}
+                    dateLabel={dateLabel}
+                    imageSizes="(max-width: 768px) 70vw, 520px"
+                  />
+                  {isLoading ? <PrintSkeleton layoutId={session.layoutId} photoUrls={urls} /> : null}
+                </div>
               </div>
             </div>
           </section>

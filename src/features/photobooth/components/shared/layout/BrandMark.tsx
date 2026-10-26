@@ -9,6 +9,7 @@ const LOGO_HEIGHT = 605
 
 type BrandMarkProps = {
   size?: 'header' | 'hero' | 'nav'
+  onNavigate?: () => void
 }
 
 const SIZE_CLASS_NAMES: Record<NonNullable<BrandMarkProps['size']>, string> = {
@@ -23,11 +24,12 @@ const SIZES: Record<NonNullable<BrandMarkProps['size']>, string> = {
   nav: '80px',
 }
 
-export default function BrandMark({ size = 'header' }: BrandMarkProps) {
+export default function BrandMark({ size = 'header', onNavigate }: BrandMarkProps) {
   return (
     <Link
       href={PHOTOBOOTH_ROUTES.WELCOME}
       scroll={false}
+      onNavigate={onNavigate}
       aria-label="Photobooth — về trang đầu"
       className="inline-flex shrink-0 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >

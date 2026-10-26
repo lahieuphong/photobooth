@@ -1,6 +1,6 @@
 import { RotateCcw, ZoomIn } from 'lucide-react'
 import type { CSSProperties } from 'react'
-import Spinner from '@/src/features/photobooth/components/shared/feedback/Spinner'
+import { PhotoSkeleton } from '@/src/features/photobooth/components/shared/feedback/Skeletons'
 import ShotImage from './ShotImage'
 
 type ShotCardProps = {
@@ -33,7 +33,7 @@ export default function ShotCard({ index, url, isLoading, filter, aspectRatio, d
         style={{ aspectRatio }}
       >
         {isLoading && !url ? (
-          <Spinner className="absolute inset-0" />
+          <PhotoSkeleton />
         ) : (
           <ShotImage url={url} filter={filter} fit="cover" sizes="(max-width: 768px) 45vw, 260px" />
         )}

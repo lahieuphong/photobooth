@@ -2,6 +2,7 @@ import { Aperture, ArrowLeft, Camera, Check, Download, Images, Sparkles, WandSpa
 import Link from 'next/link'
 import type { PhotoboothScreen } from '@/src/features/photobooth/config/screenState'
 import { PHOTOBOOTH_SCREENS } from '@/src/features/photobooth/config/screenState'
+import { PHOTOBOOTH_ROUTES, type PhotoboothRoute } from '@/src/features/photobooth/config/routes'
 import BrandMark from './BrandMark'
 import { SITE_CONTAINER } from './siteLayout'
 import StepIndicator, { STEP_PILL_CLASS_NAME, pad } from './StepIndicator'
@@ -76,6 +77,8 @@ type FlowHeaderProps = {
   /** Overrides the screen's back link, e.g. to cancel a retake before leaving. */
   onBack?: () => void
   backLabel?: string
+  /** Runs before same-tab navigation, without intercepting modified/new-tab clicks. */
+  onNavigate?: (to: PhotoboothRoute) => void
 }
 
 /**
@@ -83,7 +86,7 @@ type FlowHeaderProps = {
  * step progress in the middle (a stepper from `md`), and a compact "02 / 06"
  * pill on the right where the stepper does not fit.
  */
-export default function FlowHeader({ screen, onBack, backLabel = 'Quay lại' }: FlowHeaderProps) {
+export default function FlowHeader({ screen, onBack, backLabel = 'Quay lại', onNavigate }: FlowHeaderProps) {
   const backContent = (
     <>
       <ArrowLeft aria-hidden="true" size={19} />
@@ -96,7 +99,7 @@ export default function FlowHeader({ screen, onBack, backLabel = 'Quay lại' }:
       {backContent}
     </button>
   ) : screen.backHref ? (
-    <Link href={screen.backHref} scroll={false} aria-label={backLabel} title={backLabel} className={BACK_CLASS_NAME}>
+    <Link href={screen.backHref} scroll={false} onNavigate={() => onNavigate?.(screen.backHref!)} aria-label={backLabel} title={backLabel} className={BACK_CLASS_NAME}>
       {backContent}
     </Link>
   ) : null
@@ -106,7 +109,7 @@ export default function FlowHeader({ screen, onBack, backLabel = 'Quay lại' }:
       <div className="grid h-16 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-3 sm:h-20 md:h-24 md:gap-x-4 short:h-14">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           {back}
-          <BrandMark size="nav" />
+          <BrandMark size="nav" onNavigate={onNavigate ? () => onNavigate(PHOTOBOOTH_ROUTES.WELCOME) : undefined} />
         </div>
         <div className="flex justify-center short:hidden">
           <FlowStepper screen={screen} />

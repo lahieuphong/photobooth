@@ -1,6 +1,49 @@
-import { expect, test } from '@playwright/test'
-import { capturedCount, expectCameraReady, expectRoute, goToCapture, readStorage, shoot, startExperience } from './helpers/app'
+import { expect, test, type Page } from '@playwright/test'
+import { getExperience } from '../../src/features/photobooth/config/experiences'
+import { createSession, markReady, type PhotoboothCountdown } from '../../src/features/photobooth/domain/session'
+import { capturedCount, expectCameraReady, expectRoute, goToCapture, readStorage, SESSION_KEY, shoot, startExperience } from './helpers/app'
 import { failCameraRequests, holdCameraRequests } from './helpers/fakeCamera'
+
+const CLOCK_START = new Date('2026-10-27T00:00:00Z').getTime()
+const CLOCK_PAUSE = CLOCK_START + 90_000
+
+declare global {
+  interface Window {
+    __captureCancellation?: {
+      attempts: number
+      pendingCanvas?: HTMLCanvasElement
+      release?: () => void
+    }
+  }
+}
+
+/** No Ready route has loaded or entered the client router cache yet. */
+async function openColdCapture(page: Page, countdown: PhotoboothCountdown) {
+  const session = markReady(createSession(getExperience('duo'), `cancel-${test.info().testId}`, CLOCK_START), countdown, CLOCK_START)
+  await page.addInitScript(
+    ({ key, value }) => {
+      if (!sessionStorage.getItem(key)) sessionStorage.setItem(key, value)
+    },
+    { key: SESSION_KEY, value: JSON.stringify(session) }
+  )
+  await page.goto('capture/')
+  await expectRoute(page, '/capture')
+  await expect(page.locator('#capture-title')).toBeVisible()
+  await expectCameraReady(page)
+}
+
+/** Keep the old Capture mounted while the user has already asked to leave. */
+async function holdReadyNavigation(page: Page) {
+  let requests = 0
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => { release = resolve })
+  await page.route((url) => /\/ready\/(?:index\.txt)?$/.test(url.pathname), async (route) => {
+    requests += 1
+    await gate
+    await route.continue()
+  })
+  return { get requests() { return requests }, release }
+}
 
 test.describe('permission', () => {
   test.use({ permissions: [] })
@@ -112,18 +155,108 @@ test('countdown 5s: one press takes every shot', async ({ page }) => {
 
 for (const seconds of [10, 15]) {
   test(`countdown ${seconds}s starts at ${seconds} and stops when leaving mid-countdown`, async ({ page }) => {
-    await page.clock.install()
+    await page.clock.install({ time: CLOCK_START })
     await startExperience(page, 'Duo')
     await goToCapture(page, `${seconds}s`)
+    // install() lets real time advance. Freeze only after camera startup so
+    // assertion/action latency cannot silently advance to the next shot.
+    await page.clock.pauseAt(CLOCK_PAUSE)
     await page.getByRole('button', { name: 'Bắt đầu chụp' }).click()
     await expect(page.locator('.animate-pop')).toHaveText(String(seconds))
     // runFor fires every timer in the window (fastForward would fire each due timer only once).
     await page.clock.runFor(2_000)
     await expect(page.locator('.animate-pop')).toHaveText(String(seconds - 2))
+    expect(await capturedCount(page)).toBe(0)
 
     await page.getByRole('link', { name: /Quay lại/ }).click()
     await expectRoute(page, '/ready')
+    await expect(page.locator('#ready-title')).toBeVisible()
     await page.clock.runFor((seconds + 5) * 1000)
     expect(await capturedCount(page)).toBe(0)
   })
 }
+
+test('leaving cancels countdown immediately while the destination route is still pending', async ({ page }) => {
+  await page.clock.install({ time: CLOCK_START })
+  const navigation = await holdReadyNavigation(page)
+
+  try {
+    await openColdCapture(page, 10)
+    await page.clock.pauseAt(CLOCK_PAUSE)
+    await page.evaluate(() => {
+      window.__captureCancellation = { attempts: 0 }
+      const original = HTMLCanvasElement.prototype.toBlob
+      HTMLCanvasElement.prototype.toBlob = function (callback, type, quality) {
+        if (type === 'image/jpeg') window.__captureCancellation!.attempts += 1
+        return original.call(this, callback, type, quality)
+      }
+    })
+    await page.getByRole('button', { name: 'Bắt đầu chụp' }).click()
+    await expect(page.locator('.animate-pop')).toHaveText('10')
+    await page.clock.runFor(2_000)
+    await expect(page.locator('.animate-pop')).toHaveText('8')
+    expect(await capturedCount(page)).toBe(0)
+
+    // This navigation is deliberately held; the click must not wait for it.
+    await page.getByRole('link', { name: /Quay lại/ }).click({ noWaitAfter: true })
+    await expect.poll(() => navigation.requests).toBeGreaterThan(0)
+    await expect(page.locator('#capture-title')).toBeVisible()
+    await page.clock.runFor(15_000)
+    expect(await page.evaluate(() => window.__captureCancellation!.attempts)).toBe(0)
+    expect(await capturedCount(page)).toBe(0)
+
+    navigation.release()
+    await expectRoute(page, '/ready')
+    await expect(page.locator('#ready-title')).toBeVisible()
+    expect(await capturedCount(page)).toBe(0)
+  } finally {
+    navigation.release()
+    await page.unrouteAll({ behavior: 'wait' })
+  }
+})
+
+test('leaving discards a pending frame and preserves photos saved before cancellation', async ({ page }) => {
+  const navigation = await holdReadyNavigation(page)
+
+  try {
+    await openColdCapture(page, 0)
+    await shoot(page, 1)
+    await expect.poll(() => capturedCount(page)).toBe(1)
+    const before = await readStorage(page)
+    expect(before.photos).toHaveLength(1)
+
+    // Hold a real encoded frame rather than a made-up Blob, so cancellation
+    // is exercised across captureVideoFrameWithRetry's pending await.
+    await page.evaluate(() => {
+      const probe = { attempts: 0 } as NonNullable<Window['__captureCancellation']>
+      window.__captureCancellation = probe
+      const original = HTMLCanvasElement.prototype.toBlob
+      HTMLCanvasElement.prototype.toBlob = function (callback, type, quality) {
+        if (type !== 'image/jpeg') return original.call(this, callback, type, quality)
+        probe.attempts += 1
+        probe.pendingCanvas = this
+        return original.call(this, (blob) => { probe.release = () => callback(blob) }, type, quality)
+      }
+    })
+    await page.getByRole('button', { name: 'Chụp', exact: true }).click()
+    await expect.poll(() => page.evaluate(() => Boolean(window.__captureCancellation?.release))).toBe(true)
+    await page.getByRole('link', { name: /Quay lại/ }).click({ noWaitAfter: true })
+    await expect.poll(() => navigation.requests).toBeGreaterThan(0)
+    await expect(page.locator('#capture-title')).toBeVisible()
+
+    await page.evaluate(() => window.__captureCancellation!.release!())
+    await expect.poll(() => page.evaluate(() => window.__captureCancellation?.pendingCanvas?.width)).toBe(0)
+    const after = await readStorage(page)
+    expect(after.session!.shots).toEqual(before.session!.shots)
+    expect(after.photos).toEqual(before.photos)
+    expect(await page.evaluate(() => window.__captureCancellation!.attempts)).toBe(1)
+
+    navigation.release()
+    await expectRoute(page, '/ready')
+    await expect(page.locator('#ready-title')).toBeVisible()
+    expect((await readStorage(page)).session!.shots).toEqual(before.session!.shots)
+  } finally {
+    navigation.release()
+    await page.unrouteAll({ behavior: 'wait' })
+  }
+})

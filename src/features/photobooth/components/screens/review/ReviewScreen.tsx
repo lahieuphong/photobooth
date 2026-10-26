@@ -12,7 +12,7 @@ import { Doodle, HeartSticker } from '@/src/features/photobooth/components/share
 import TipsCard from '@/src/features/photobooth/components/shared/brand/TipsCard'
 import Button from '@/src/features/photobooth/components/shared/controls/Button'
 import MissingPhotosNotice from '@/src/features/photobooth/components/shared/feedback/MissingPhotosNotice'
-import Spinner from '@/src/features/photobooth/components/shared/feedback/Spinner'
+import ScreenSkeleton, { PhotoSkeleton } from '@/src/features/photobooth/components/shared/feedback/Skeletons'
 import FlowHeader from '@/src/features/photobooth/components/shared/layout/FlowHeader'
 import { SITE_CONTAINER } from '@/src/features/photobooth/components/shared/layout/siteLayout'
 import { getExperience } from '@/src/features/photobooth/config/experiences'
@@ -73,9 +73,9 @@ export default function ReviewScreen() {
     return (
       <BrandPage>
         <main className="relative isolate flex min-h-full flex-col">
-          <PastelBackdrop />
+          <PastelBackdrop stableViewport />
           <FlowHeader screen={SCREEN} />
-          <Spinner className="flex-1" />
+          <ScreenSkeleton screen="review" />
         </main>
       </BrandPage>
     )
@@ -126,7 +126,7 @@ export default function ReviewScreen() {
   return (
     <BrandPage>
       <main className="relative isolate flex min-h-full flex-col">
-        <PastelBackdrop />
+        <PastelBackdrop stableViewport />
         <FlowHeader screen={SCREEN} />
 
         <div
@@ -208,7 +208,7 @@ export default function ReviewScreen() {
                         {item.isDraft && !retake.draftPhotoId ? (
                           <span className="absolute inset-0 flex items-center justify-center text-[13px] text-muted">Chưa chụp</span>
                         ) : isLoading && !item.url ? (
-                          <Spinner className="absolute inset-0" />
+                          <PhotoSkeleton />
                         ) : (
                           <ShotImage url={item.url} filter={filter} fit="cover" sizes="45vw" />
                         )}

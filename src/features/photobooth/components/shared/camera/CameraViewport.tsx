@@ -3,6 +3,7 @@
 import { CameraOff, Hourglass, Play, RefreshCw, RotateCw } from 'lucide-react'
 import type { ReactNode } from 'react'
 import Spinner from '@/src/features/photobooth/components/shared/feedback/Spinner'
+import { CameraSkeleton } from '@/src/features/photobooth/components/shared/feedback/Skeletons'
 import type { PhotoboothLayoutSlot } from '@/src/features/photobooth/domain/layouts'
 import type { CameraController } from '@/src/features/photobooth/hooks/useCamera'
 import type { CameraErrorKind } from '@/src/features/photobooth/services/camera/cameraStream'
@@ -103,9 +104,7 @@ export default function CameraViewport({ camera, filter = 'none', slot, reloadNo
         ) : null}
 
         {state.status === 'starting' ? (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Spinner tone="light" label="Đang mở camera…" />
-          </div>
+          <CameraSkeleton />
         ) : null}
 
         {state.status === 'waiting-permission' ? (

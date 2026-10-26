@@ -9,7 +9,7 @@ import BubbleHeading from '@/src/features/photobooth/components/shared/brand/Bub
 import PastelBackdrop from '@/src/features/photobooth/components/shared/brand/PastelBackdrop'
 import CameraCard from '@/src/features/photobooth/components/shared/camera/CameraCard'
 import CameraViewport from '@/src/features/photobooth/components/shared/camera/CameraViewport'
-import Spinner from '@/src/features/photobooth/components/shared/feedback/Spinner'
+import ScreenSkeleton from '@/src/features/photobooth/components/shared/feedback/Skeletons'
 import FlowHeader from '@/src/features/photobooth/components/shared/layout/FlowHeader'
 import { SITE_CONTAINER } from '@/src/features/photobooth/components/shared/layout/siteLayout'
 import { getExperience } from '@/src/features/photobooth/config/experiences'
@@ -118,6 +118,20 @@ export default function CaptureScreen() {
   // Read inside the capture loop: a camera that drops mid-sequence must stop it.
   const cameraReadyRef = useRef(isCameraReady)
 
+  const cancelPendingCapture = useCallback(() => {
+    if (runRef.current) runRef.current.cancelled = true
+  }, [])
+
+  const beginLeaving = useCallback((to: PhotoboothRoute) => {
+    // A Link can keep this screen mounted while the next route loads. Cancel
+    // before that transition starts, including a frame/save already in flight.
+    cancelPendingCapture()
+    leavingRef.current = true
+    lockRef.current = true
+    setCountdownValue(null)
+    setLeavingTo(to)
+  }, [cancelPendingCapture])
+
   useEffect(() => {
     cameraReadyRef.current = isCameraReady
   }, [isCameraReady])
@@ -127,8 +141,22 @@ export default function CaptureScreen() {
     return () => {
       // Stops any running countdown/sequence loop at its next checkpoint.
       aliveRef.current = false
+      cancelPendingCapture()
     }
-  }, [])
+  }, [cancelPendingCapture])
+
+  useEffect(() => {
+    function handleHistoryNavigation() {
+      const path = window.location.pathname.replace(/\/+$/, '')
+      if (path.endsWith(PHOTOBOOTH_ROUTES.CAPTURE)) return
+      // Browser Back/Forward does not pass through the header's Link callback.
+      cancelPendingCapture()
+      leavingRef.current = true
+      lockRef.current = true
+    }
+    window.addEventListener('popstate', handleHistoryNavigation)
+    return () => window.removeEventListener('popstate', handleHistoryNavigation)
+  }, [cancelPendingCapture])
 
   useEffect(() => {
     if (!isLoaded) return
@@ -153,15 +181,13 @@ export default function CaptureScreen() {
 
   const leave = useCallback(
     (to: PhotoboothRoute) => {
-      leavingRef.current = true
-      lockRef.current = true
-      setLeavingTo(to)
+      beginLeaving(to)
       navigateWithFallback(router, to, PHOTOBOOTH_ROUTES.CAPTURE, {
         // A reload is only safe while none of this session's photos live in memory alone.
         allowHardNavigation: isSessionReloadSafe(),
       })
     },
-    [router]
+    [beginLeaving, router]
   )
 
   const runCapture = useCallback(async () => {
@@ -182,7 +208,7 @@ export default function CaptureScreen() {
     const { countdown } = initial
     const plannedShots = getShotsPerPress(initial)
     const checkpoint = () => {
-      if (run.cancelled || !aliveRef.current) throw new CaptureAborted()
+      if (run.cancelled || leavingRef.current || !aliveRef.current) throw new CaptureAborted()
       if (document.visibilityState === 'hidden') throw new Error('CAPTURE_HIDDEN')
       if (!cameraReadyRef.current) throw new Error('CAMERA_LOST')
     }
@@ -215,10 +241,9 @@ export default function CaptureScreen() {
         if (run.cancelled) throw new CaptureAborted()
         setFlashKey((value) => value + 1)
 
-        // The photo is stored before the session points at it. The shot was
-        // taken (and flashed), so it is attached even if the screen unmounted
-        // meanwhile; only an explicit cancel drops it. A photo that cannot be
-        // attached is deleted right away instead of lingering as an orphan.
+        // The photo is stored before the session points at it. Leaving cancels
+        // any pending attachment; shots already attached remain untouched.
+        // A photo that cannot be attached is deleted instead of orphaned.
         const photoId = await savePhoto(latest.id, blob)
         try {
           if (run.cancelled) throw new CaptureAborted()
@@ -275,7 +300,7 @@ export default function CaptureScreen() {
     if (leavingRef.current) return
     // Stops a running countdown at its next checkpoint; a draft still being
     // saved is discarded instead of attached.
-    if (runRef.current) runRef.current.cancelled = true
+    cancelPendingCapture()
     if (!apply((current, now) => cancelRetake(current, now))) return
     leave(PHOTOBOOTH_ROUTES.REVIEW)
   }
@@ -284,9 +309,9 @@ export default function CaptureScreen() {
     return (
       <BrandPage>
         <main className="relative isolate flex min-h-full flex-col">
-          <PastelBackdrop />
+          <PastelBackdrop stableViewport />
           <FlowHeader screen={SCREEN} />
-          <Spinner className="flex-1" />
+          <ScreenSkeleton screen="capture" />
         </main>
       </BrandPage>
     )
@@ -321,8 +346,8 @@ export default function CaptureScreen() {
   return (
     <BrandPage>
       <main className="relative isolate min-h-full">
-        <PastelBackdrop />
-        <FlowHeader screen={SCREEN} onBack={retake ? handleCancelRetake : undefined} backLabel={retake ? 'Hủy chụp lại' : undefined} />
+        <PastelBackdrop stableViewport />
+        <FlowHeader screen={SCREEN} onBack={retake ? handleCancelRetake : undefined} backLabel={retake ? 'Hủy chụp lại' : undefined} onNavigate={beginLeaving} />
 
         <div
           // The camera card is sized from the active slot's shape and a per-layout height cap.
@@ -402,7 +427,7 @@ export default function CaptureScreen() {
             <button
               type="button"
               onClick={() => void runCapture()}
-              disabled={!isCameraReady || isBusy}
+              disabled={!isCameraReady || isBusy || Boolean(leavingTo)}
               aria-label={shutterLabel}
               className="group relative grid size-18 shrink-0 place-items-center rounded-full bg-linear-to-b from-[#de5f7b] to-accent-deep text-white shadow-[0_5px_0_#8e2a43,0_16px_28px_-8px_rgba(176,58,85,0.6)] ring-[6px] ring-cream transition-[translate,box-shadow,opacity] duration-200 ease-out-soft hover:-translate-y-0.5 focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-cocoa active:translate-y-1 active:shadow-[0_1px_0_#8e2a43] disabled:pointer-events-none disabled:opacity-45 disabled:shadow-none md:size-22 short:size-16"
             >
@@ -417,7 +442,7 @@ export default function CaptureScreen() {
               </p>
               {leavingTo && isNavigationStuck ? (
                 <Link href={leavingTo} scroll={false} className="mt-1 inline-block text-[13px] font-semibold text-cocoa underline underline-offset-2">
-                  Tiếp tục tới bước Xem lại
+                  Tiếp tục chuyển trang
                 </Link>
               ) : null}
             </div>

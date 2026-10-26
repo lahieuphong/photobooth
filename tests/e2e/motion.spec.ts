@@ -1,5 +1,5 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
-import { expectCameraReady, expectRoute, goToCapture, readStorage, shoot } from './helpers/app'
+import { expectCameraReady, expectRoute, goToCapture, readStorage, shoot, startExperience } from './helpers/app'
 import { holdCameraRequests } from './helpers/fakeCamera'
 import { expectPerkFooterAtEnd } from './helpers/layout'
 
@@ -8,16 +8,25 @@ const VIEWPORTS = [
   [1024, 768], [1280, 800], [1440, 900], [1920, 1080], [844, 390],
 ] as const
 
-async function settle(page: Page) {
-  await page.evaluate(async () => {
+type ScreenName = 'welcome' | 'experience' | 'ready' | 'capture' | 'review' | 'studio' | 'result'
+
+async function settle(page: Page, name: ScreenName) {
+  // URL polling alone can pass while Capture's hard-navigation fallback is
+  // replacing the old document. Wait for that document and this screen's mount
+  // before evaluating promises that must stay in the same execution context.
+  await page.waitForURL(new RegExp(`/${name}/?$`), { waitUntil: 'domcontentloaded' })
+  const root = page.locator('[data-motion-root]').filter({ has: page.locator(`#${name}-title`) })
+  await expect(root).toBeVisible()
+  await expect(root.locator('.skeleton-block')).toHaveCount(0)
+  await root.evaluate(async () => {
     await document.fonts.ready
     await Promise.all(document.getAnimations().filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
       .map((animation) => animation.finished.catch(() => {})))
   })
 }
 
-async function inspectScreen(page: Page, info: TestInfo, name: string) {
-  await settle(page)
+async function inspectScreen(page: Page, info: TestInfo, name: ScreenName) {
+  await settle(page, name)
   if (name === 'ready' || name === 'review') await expectPerkFooterAtEnd(page)
   const sizes = await page.locator('[data-motion-root]').evaluate((root) => ({
     width: root.clientWidth, scrollWidth: root.scrollWidth,
@@ -27,6 +36,39 @@ async function inspectScreen(page: Page, info: TestInfo, name: string) {
   expect(sizes.pageScrollWidth, `${name}: page fits`).toBeLessThanOrEqual(sizes.pageWidth + 1)
   await page.screenshot({ path: info.outputPath(`${name}.png`), animations: 'disabled' })
 }
+
+test('settled layout waits for the Review document after the navigation fallback', async ({ page }, info) => {
+  await page.setViewportSize({ width: 430, height: 932 })
+  await startExperience(page, 'Quick 4')
+  await goToCapture(page, 'Tắt')
+
+  // Keep the client transition pending until the real fallback starts a document
+  // navigation. The gate follows actual requests, rather than a timed sleep.
+  const reviewDocument = page.waitForRequest((request) =>
+    request.isNavigationRequest() && new URL(request.url()).pathname.endsWith('/review/')
+  )
+  let unblockClientRoute!: () => void
+  const clientRouteGate = new Promise<void>((resolve) => { unblockClientRoute = resolve })
+  let markClientRouteRequested!: () => void
+  const clientRouteRequested = new Promise<void>((resolve) => { markClientRouteRequested = resolve })
+  await page.route('**/review/index.txt*', async (route) => {
+    markClientRouteRequested()
+    await clientRouteGate
+    await route.abort()
+  })
+
+  try {
+    await shoot(page, 4)
+    await clientRouteRequested
+    await reviewDocument
+    await inspectScreen(page, info, 'review')
+    await expect(page.getByRole('button', { name: /Vào Studio/ })).toBeEnabled()
+    expect((await readStorage(page)).session!.shots.filter(Boolean)).toHaveLength(4)
+  } finally {
+    unblockClientRoute()
+    await page.unrouteAll({ behavior: 'wait' })
+  }
+})
 
 for (const [width, height] of VIEWPORTS) {
   test(`motion flow and settled layout at ${width}x${height}`, async ({ page }, info) => {

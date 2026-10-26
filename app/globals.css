@@ -341,3 +341,20 @@
     opacity: 0;
   }
 }
+
+/* Sweet Skeleton: actual pending states only; opacity-only keeps paint and CLS low. */
+@keyframes skeleton-breathe {
+  0%, 100% { opacity: 0.72; }
+  50% { opacity: 1; }
+}
+.skeleton-block {
+  background: linear-gradient(130deg, #fae5e9, #f1e3e2 46%, #f8e4cb);
+  animation: skeleton-breathe 1.65s ease-in-out infinite;
+}
+.skeleton-block.skeleton-block-dark {
+  background: linear-gradient(130deg, #53454b, #715961 50%, #514248);
+}
+[data-motion-hidden="true"] .skeleton-block { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-block { animation: none; opacity: 1; }
+}
