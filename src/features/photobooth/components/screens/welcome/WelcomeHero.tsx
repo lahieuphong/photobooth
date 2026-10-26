@@ -60,7 +60,7 @@ export default function WelcomeHero() {
 
             <BubbleHeading
               id="welcome-title"
-              className="motion-lines mt-5 font-bubble text-[clamp(34px,11.4vw,60px)] leading-[1.14] font-extrabold tracking-[-0.01em] text-cocoa sm:text-[68px] split:mt-6 lg:text-[clamp(56px,5.3vw,82px)] short:mt-3 short:text-[clamp(30px,5.6vw,42px)]"
+              className="mt-5 font-bubble text-[clamp(34px,11.4vw,60px)] leading-[1.14] font-extrabold tracking-[-0.01em] text-cocoa sm:text-[68px] split:mt-6 lg:text-[clamp(56px,5.3vw,82px)] short:mt-3 short:text-[clamp(30px,5.6vw,42px)]"
               decorations={
                 <>
                   <HeartSticker className="absolute top-[34%] right-[-0.2em] w-[0.6em] rotate-12 split:right-[-0.7em]" />

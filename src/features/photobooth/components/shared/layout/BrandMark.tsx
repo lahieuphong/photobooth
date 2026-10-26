@@ -31,15 +31,22 @@ export default function BrandMark({ size = 'header' }: BrandMarkProps) {
       aria-label="Photobooth — về trang đầu"
       className="inline-flex shrink-0 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
-      <Image
-        src={getAssetPath('/images/logos/photobooth-logo.png')}
-        alt="Photobooth"
-        width={LOGO_WIDTH}
-        height={LOGO_HEIGHT}
-        priority
-        sizes={SIZES[size]}
-        className={`w-auto ${SIZE_CLASS_NAMES[size]}`}
-      />
+      <picture className="contents">
+        <source
+          srcSet={`${getAssetPath('/images/logos/photobooth-logo-160.webp')} 160w, ${getAssetPath('/images/logos/photobooth-logo-320.webp')} 320w, ${getAssetPath('/images/logos/photobooth-logo.png')} ${LOGO_WIDTH}w`}
+          sizes={SIZES[size]}
+        />
+        <Image
+          src={getAssetPath('/images/logos/photobooth-logo.png')}
+          alt="Photobooth"
+          width={LOGO_WIDTH}
+          height={LOGO_HEIGHT}
+          loading="eager"
+          sizes={SIZES[size]}
+          className={`w-auto ${SIZE_CLASS_NAMES[size]}`}
+          style={{ aspectRatio: `${LOGO_WIDTH} / ${LOGO_HEIGHT}` }}
+        />
+      </picture>
     </Link>
   )
 }

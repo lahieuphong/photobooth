@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { captureSession, expectCameraReady, expectRoute, startExperience } from './helpers/app'
+import { expectCameraReady, expectRoute, goToCapture, shoot, startExperience } from './helpers/app'
 import { holdCameraRequests } from './helpers/fakeCamera'
 import { expectPerkFooterAtEnd } from './helpers/layout'
 
@@ -16,7 +16,11 @@ for (const title of ['Quick 4', 'Editorial', 'Duo', 'Story 6', 'Play']) {
       await expectPerkFooterAtEnd(page)
     }
     await page.setViewportSize({ width: 1920, height: 1080 })
-    await captureSession(page, title, title === 'Story 6' ? 6 : 4)
+    // Continue the Ready session being inspected; restarting the whole flow here
+    // needlessly reopens the camera and races document navigation under load.
+    await goToCapture(page, 'Tắt')
+    await shoot(page, title === 'Story 6' ? 6 : 4)
+    await expectRoute(page, '/review')
     await expectPerkFooterAtEnd(page)
     await page.screenshot({ path: info.outputPath('review-tall-desktop.png'), animations: 'disabled' })
     await page.getByRole('button', { name: 'Chụp lại ảnh 1', exact: true }).click()

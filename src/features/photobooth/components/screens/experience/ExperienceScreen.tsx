@@ -140,7 +140,7 @@ export default function ExperienceScreen() {
         <FlowHeader screen={SCREEN} />
 
         <div className={`${SITE_CONTAINER} flex-1 pb-2`}>
-          <div className="mt-2 animate-rise sm:mt-4 lg:mt-2 lg:flex lg:items-end lg:justify-between lg:gap-8 short:mt-1">
+          <div className="mt-2 sm:mt-4 lg:mt-2 lg:flex lg:items-end lg:justify-between lg:gap-8 short:mt-1">
             <div className="min-w-0">
               <BubbleHeading
                 id="experience-title"
@@ -213,7 +213,7 @@ export default function ExperienceScreen() {
               {statusMessage ?? (
                 <>
                   <StarSticker className="w-6 shrink-0" />
-                  <span className="font-hand text-[18px] leading-tight text-accent-deep lg:text-[21px]">
+                  <span className="text-[18px] leading-tight text-accent-deep sm:font-hand lg:text-[21px]">
                     {getExperience(selectedId).description}
                   </span>
                 </>

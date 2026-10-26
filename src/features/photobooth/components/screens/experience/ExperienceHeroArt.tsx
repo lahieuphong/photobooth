@@ -1,6 +1,6 @@
-import Image from '@/src/features/photobooth/components/shared/motion/SoftImage'
+import MarketingPhoto from '@/src/features/photobooth/components/shared/composition/MarketingPhoto'
 import { CameraSticker, Doodle, HeartSticker, StarSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
-import { getDemoPhotoUrls } from '@/src/features/photobooth/config/demoPhotos'
+import { getDemoPhotoSrcSets, getDemoPhotoUrls } from '@/src/features/photobooth/config/demoPhotos'
 
 const POLAROID_CLASS_NAME =
   'absolute w-[21%] rounded-[4px] bg-white p-[1.6%] pb-[5%] shadow-[0_16px_28px_-14px_rgba(74,29,36,0.45)]'
@@ -11,12 +11,12 @@ export default function ExperienceHeroArt({ className = '' }: { className?: stri
     <div aria-hidden="true" className={`relative aspect-[2.3/1] w-full max-w-108 ${className}`}>
       <div className={`${POLAROID_CLASS_NAME} top-[10%] left-[34%] -rotate-8`}>
         <div className="relative aspect-square overflow-hidden rounded-[2px]">
-          <Image src={getDemoPhotoUrls('quick-4')[0]} alt="" fill sizes="90px" className="object-cover" draggable={false} />
+          <MarketingPhoto src={getDemoPhotoUrls('quick-4')[0]} sourceSet={getDemoPhotoSrcSets('quick-4')[0]} sizes="90px" />
         </div>
       </div>
       <div className={`${POLAROID_CLASS_NAME} top-[16%] left-[50%] rotate-8`}>
         <div className="relative aspect-square overflow-hidden rounded-[2px]">
-          <Image src={getDemoPhotoUrls('duo')[3]} alt="" fill sizes="90px" className="object-cover" draggable={false} />
+          <MarketingPhoto src={getDemoPhotoUrls('duo')[3]} sourceSet={getDemoPhotoSrcSets('duo')[3]} sizes="90px" />
         </div>
       </div>
 

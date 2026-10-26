@@ -2,7 +2,6 @@
 
 import { useRef, type ReactNode } from 'react'
 import { useSweetMotion } from '@/src/features/photobooth/hooks/useSweetMotion'
-import { bubbleFont, handFont } from './fonts'
 
 /**
  * Scrolling page layer for the playful screens (Welcome, Experience), unlike the
@@ -16,7 +15,7 @@ export default function BrandPage({ children }: { children: ReactNode }) {
     <div
       ref={scrollRef}
       data-motion-root=""
-      className={`${bubbleFont.variable} ${handFont.variable} fixed inset-0 overflow-x-hidden overflow-y-auto overscroll-contain bg-paper text-ink`}
+      className="fixed inset-0 overflow-x-hidden overflow-y-auto overscroll-contain bg-paper text-ink"
     >
       {children}
     </div>

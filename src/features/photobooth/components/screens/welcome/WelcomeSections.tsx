@@ -6,7 +6,7 @@ import Button from '@/src/features/photobooth/components/shared/controls/Button'
 import PhotoComposition from '@/src/features/photobooth/components/shared/composition/PhotoComposition'
 import { SITE_CONTAINER } from '@/src/features/photobooth/components/shared/layout/siteLayout'
 import { PHOTOBOOTH_EXPERIENCES, type PhotoboothExperienceId } from '@/src/features/photobooth/config/experiences'
-import { getDemoPhotoUrls } from '@/src/features/photobooth/config/demoPhotos'
+import { getDemoPhotoSrcSets, getDemoPhotoUrls } from '@/src/features/photobooth/config/demoPhotos'
 import { PHOTOBOOTH_ROUTES } from '@/src/features/photobooth/config/routes'
 import { getFrame, type PhotoboothFrameId } from '@/src/features/photobooth/domain/frames'
 import type { PhotoboothLayoutId } from '@/src/features/photobooth/domain/layouts'
@@ -90,8 +90,9 @@ export function ExperienceShowcase() {
                     frameId={experience.defaultFrameId}
                     lookId={experience.defaultLookId}
                     photoUrls={getDemoPhotoUrls(experience.id)}
+                    photoSrcSets={getDemoPhotoSrcSets(experience.id)}
                     imageLoading="lazy"
-                    imageSizes="160px"
+                    imageSizes="(max-width: 640px) 14vw, 80px"
                   />
                 </div>
               </div>
@@ -148,8 +149,9 @@ export function FrameShowcase() {
                       frameId={frameId}
                       lookId={lookId}
                       photoUrls={getDemoPhotoUrls(demoExperienceId)}
+                      photoSrcSets={getDemoPhotoSrcSets(demoExperienceId)}
                       imageLoading="lazy"
-                      imageSizes="(max-width: 640px) 30vw, 280px"
+                      imageSizes="(max-width: 640px) 15vw, 140px"
                     />
                   </div>
                   <h3 className="mt-5 font-bubble text-[16px] font-bold text-cocoa sm:text-[20px]">{frame.label}</h3>

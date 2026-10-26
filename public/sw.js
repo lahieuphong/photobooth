@@ -5,7 +5,7 @@ const STATIC_CACHE = 'photobooth-static-v5'
 const OWN_CACHE_PREFIXES = ['photobooth-static-', 'btmt-photobooth-static-']
 
 const PRECACHE_ASSETS = [
-  'images/logos/photobooth-logo.png',
+  'images/logos/photobooth-logo-160.webp',
   'pwa-icons/icon-192.png',
   'pwa-icons/icon-512.png',
 ]

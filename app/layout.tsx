@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 import { Be_Vietnam_Pro, Newsreader } from 'next/font/google'
+import { bubbleFont, handFont, printLabelFont } from '@/src/features/photobooth/components/shared/brand/fonts'
 import SessionActivityGuard from '@/src/features/photobooth/components/shared/session/SessionActivityGuard'
 import { getAssetPath } from '@/src/features/photobooth/utils/assetPath'
 import './globals.css'
@@ -9,13 +10,22 @@ import './globals.css'
 const sans = Be_Vietnam_Pro({
   variable: '--font-be-vietnam',
   subsets: ['latin', 'vietnamese'],
-  weight: ['400', '500', '600', '700'],
+  weight: '400',
+})
+
+// Keep secondary weights available without competing with the headline preload.
+const sansWeights = Be_Vietnam_Pro({
+  variable: '--font-be-vietnam-weights',
+  subsets: ['latin', 'vietnamese'],
+  weight: ['500', '600', '700'],
+  preload: false,
 })
 
 const display = Newsreader({
   variable: '--font-newsreader',
   subsets: ['latin', 'vietnamese'],
   style: ['normal', 'italic'],
+  weight: '400',
   preload: false,
 })
 
@@ -67,7 +77,7 @@ export default function RootLayout({
   return (
     <html
       lang="vi"
-      className={`${sans.variable} ${display.variable} h-full`}
+      className={`${bubbleFont.variable} ${handFont.variable} ${printLabelFont.variable} ${sans.variable} ${sansWeights.variable} ${display.variable} h-full`}
     >
       <body className="min-h-screen bg-paper font-sans text-ink antialiased">
         {/* afterInteractive can run after window "load" already fired; register immediately then. */}

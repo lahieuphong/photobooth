@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test --import ./tests/setup/register.mjs 'tests/**/*.test.ts'",
     "test:e2e": "playwright test",
-    "demo:assets": "node scripts/process-demo-images.mjs"
+    "demo:assets": "node scripts/process-demo-images.mjs",
+    "demo:variants": "node scripts/generate-marketing-variants.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.7.0",

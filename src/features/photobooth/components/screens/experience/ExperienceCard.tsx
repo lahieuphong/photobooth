@@ -4,7 +4,7 @@ import { PASTEL_TILE_TONES } from '@/src/features/photobooth/components/shared/b
 import { HeartSticker, StarSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
 import PhotoComposition from '@/src/features/photobooth/components/shared/composition/PhotoComposition'
 import type { PhotoboothExperience } from '@/src/features/photobooth/config/experiences'
-import { getDemoPhotoUrls } from '@/src/features/photobooth/config/demoPhotos'
+import { getDemoPhotoSrcSets, getDemoPhotoUrls } from '@/src/features/photobooth/config/demoPhotos'
 import { getLayout } from '@/src/features/photobooth/domain/layouts'
 
 type ExperienceCardProps = {
@@ -70,8 +70,9 @@ export default function ExperienceCard({ experience, index, isSelected, onSelect
             frameId={experience.defaultFrameId}
             lookId={experience.defaultLookId}
             photoUrls={getDemoPhotoUrls(experience.id)}
+            photoSrcSets={getDemoPhotoSrcSets(experience.id)}
             imageLoading="lazy"
-            imageSizes="(min-width: 1024px) 170px, 110px"
+            imageSizes="(min-width: 1280px) 90px, (min-width: 1024px) 70px, (min-width: 640px) 55px, 45px"
           />
         </span>
         {isSelected ? <HeartSticker className="motion-sticker absolute -top-3 -right-3 z-10 w-8 rotate-12 animate-pop lg:w-10" /> : null}

@@ -67,8 +67,18 @@ tests/                                  node:test unit tests for the domain rule
   IntersectionObserver; reduced motion disables nonessential effects. Experience
   and Studio share radio keyboard behavior (arrows, Home/End and one tab stop).
 - **Loading.** Below-the-fold marketing compositions use native lazy loading.
-  The occasional Newsreader face loads on demand; the main interface and bubble
-  faces retain their preload. A denied session-storage read is reported separately
+  Static `picture` sources let the browser choose 160/320 px demo variants or the
+  unchanged master, even with `images.unoptimized`. `MarketingPhoto` uses native
+  image decoding without client image state; session previews retain `SoftImage`.
+  Hero photos stay eager; the
+  two marketing headlines paint without opacity/entrance delays. Fonts are
+  registered once in the root layout: only Be Vietnam Pro 400 and the single
+  Baloo 2 Latin/Vietnamese variable subset preload. Secondary interface weights
+  and decorative fonts load on demand; Newsreader uses the actual UI weight, 400.
+  The hero's fixed “Photobooth” label has its own 1.2 KB Newsreader subset with
+  identical glyphs; camera messages keep the complete Vietnamese face. The
+  screen-reader-only mobile hint does not download the handwriting face.
+  A denied session-storage read is reported separately
   from an empty session, so starting over never overwrites unreadable metadata.
 
 ## Development
@@ -134,3 +144,26 @@ corepack yarn@1.22.22 demo:assets --only editorial/01,duo/01,duo/04 --output-dir
 ```
 
 No original photos, QA screenshots or contact sheets are needed for a normal build.
+
+After regenerating the 22 published masters, run `corepack yarn@1.22.22 demo:variants`.
+This derives uncropped 160/320 px demo WebPs at quality 88 and lossless logo variants,
+and records real photo master
+widths in `config/demoImageVariants.ts`. Masters are never overwritten; high-density
+or large displays can still select them. These sources are marketing-only and never
+enter a camera session or PNG export.
+
+The checked-in Baloo 2 v1.700 WOFF2 retains 333 Latin, Vietnamese, combining-mark and
+UI-symbol codepoints in one request, with the same 400–800
+variable weight axis. Its OFL license is beside the font in
+`components/shared/brand/assets/`. To reproduce it, install `fonttools[woff]==4.57.0`
+in a separate Python environment and run
+`python scripts/subset-bubble-font.py <Baloo2-master.ttf>`.
+The script verifies the upstream SHA-256 before subsetting and
+preserves timestamps for deterministic output. The master is available from
+[google/fonts at 8e0cd05](https://github.com/google/fonts/blob/8e0cd05881f3ae5e933ba4161103005a3e841ce0/ofl/baloo2/Baloo2%5Bwght%5D.ttf).
+Font generation is optional build tooling, not a runtime or normal-build dependency.
+
+`scripts/subset-print-label-font.py <Newsreader-400-italic.woff2>` reproduces the
+fixed label subset with the same tooling. Its pinned upstream URL and SHA-256 are
+in the script; the OFL license is beside the subset. If the label text changes,
+update the subset and verify its glyphs before publishing.

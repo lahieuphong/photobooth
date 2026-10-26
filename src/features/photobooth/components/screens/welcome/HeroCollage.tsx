@@ -1,7 +1,7 @@
-import Image from '@/src/features/photobooth/components/shared/motion/SoftImage'
+import MarketingPhoto from '@/src/features/photobooth/components/shared/composition/MarketingPhoto'
 import PhotoComposition from '@/src/features/photobooth/components/shared/composition/PhotoComposition'
 import { CameraSticker, Doodle, HeartSticker, StarSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
-import { getDemoPhotoUrls } from '@/src/features/photobooth/config/demoPhotos'
+import { getDemoPhotoSrcSets, getDemoPhotoUrls } from '@/src/features/photobooth/config/demoPhotos'
 
 // Every piece is placed in percentages of the collage box (fixed aspect ratio),
 // so the whole scene scales as one picture from 320px phones to wide desktops.
@@ -10,6 +10,7 @@ const PRINT_CARD =
   'overflow-hidden rounded-[6px] ring-4 ring-white shadow-[0_22px_40px_-14px_rgba(74,29,36,0.45)] sm:rounded-[10px] sm:ring-[6px]'
 
 const STRIP_SHOTS = getDemoPhotoUrls('editorial')
+const STRIP_SOURCES = getDemoPhotoSrcSets('editorial')
 
 /** A single cut strip, as handed out by a real booth. Sized in cqw of its wrapper. */
 function PhotoStrip() {
@@ -18,7 +19,7 @@ function PhotoStrip() {
       <div className="flex flex-col gap-[5cqw]">
         {STRIP_SHOTS.map((url, index) => (
           <div key={url} className="relative aspect-4/3 overflow-hidden rounded-[2.5cqw] ring-1 ring-white/60">
-            <Image src={url} alt="" fill sizes="(max-width: 640px) 25vw, 160px" className="object-cover grayscale" draggable={false} />
+            <MarketingPhoto src={url} sourceSet={STRIP_SOURCES[index]} loading="eager" sizes="(max-width: 640px) 25vw, 160px" className="grayscale" />
             {index === 0 ? (
               <svg viewBox="0 0 48 44" aria-hidden="true" className="absolute top-[10%] right-[8%] w-[20%] fill-none stroke-white" strokeWidth={4}>
                 <path d="M24 40C24 40 5 29 5 15.5 5 9 9.8 4.5 15.6 4.5c3.8 0 6.8 2 8.4 5 1.6-3 4.6-5 8.4-5C38.2 4.5 43 9 43 15.5 43 29 24 40 24 40Z" />
@@ -27,7 +28,7 @@ function PhotoStrip() {
           </div>
         ))}
       </div>
-      <p className="py-[6cqw] text-center font-display text-[14cqw] leading-none text-[#f4eee4] italic">Photobooth</p>
+      <p className="py-[6cqw] text-center font-print-label text-[14cqw] leading-none text-[#f4eee4] italic">Photobooth</p>
     </div>
   )
 }
@@ -45,13 +46,13 @@ export default function HeroCollage({ className = '' }: { className?: string }) 
 
       <div className="absolute top-[14%] left-[3%] w-[38%] -rotate-9">
         <div className={`hero-print animate-float [animation-delay:-1.2s] ${PRINT_CARD}`}>
-          <PhotoComposition layoutId="grid-4" frameId="minimal" lookId="dreamy" photoUrls={getDemoPhotoUrls('quick-4')} imageSizes="220px" />
+          <PhotoComposition layoutId="grid-4" frameId="minimal" lookId="dreamy" photoUrls={getDemoPhotoUrls('quick-4')} photoSrcSets={getDemoPhotoSrcSets('quick-4')} imageSizes="(max-width: 640px) 17vw, 100px" />
         </div>
       </div>
 
       <div className="absolute top-[17%] right-[3%] w-[38%] rotate-8">
         <div className={`hero-print animate-float [animation-delay:-3.6s] ${PRINT_CARD}`}>
-          <PhotoComposition layoutId="grid-6" frameId="play" lookId="clean" photoUrls={getDemoPhotoUrls('story-6')} imageSizes="220px" />
+          <PhotoComposition layoutId="grid-6" frameId="play" lookId="clean" photoUrls={getDemoPhotoUrls('story-6')} photoSrcSets={getDemoPhotoSrcSets('story-6')} imageSizes="(max-width: 640px) 16vw, 100px" />
         </div>
       </div>
 

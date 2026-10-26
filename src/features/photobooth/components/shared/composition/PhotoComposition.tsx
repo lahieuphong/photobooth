@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import SoftImage from '@/src/features/photobooth/components/shared/motion/SoftImage'
+import MarketingPhoto from './MarketingPhoto'
 import { getFrame, getFrameOverlayUrl, type PhotoboothFrameId } from '@/src/features/photobooth/domain/frames'
 import {
   PRINT_HEIGHT,
@@ -22,6 +23,8 @@ export type PhotoCompositionProps = {
   imageSizes?: string
   /** Marketing sections can defer photos while session previews keep their eager behavior. */
   imageLoading?: 'eager' | 'lazy'
+  /** Optional static responsive candidates, aligned with photoUrls; never needed for session blobs. */
+  photoSrcSets?: string[]
 }
 
 const PLACEHOLDER_TONES = [
@@ -75,6 +78,7 @@ export default function PhotoComposition({
   className = '',
   imageSizes = '(max-width: 768px) 45vw, 320px',
   imageLoading = 'eager',
+  photoSrcSets,
 }: PhotoCompositionProps) {
   const layout = getLayout(layoutId)
   const frame = getFrame(frameId)
@@ -102,7 +106,12 @@ export default function PhotoComposition({
             }}
           >
             {url ? (
-              <SoftImage
+              photoSrcSets?.[slot.shotIndex] ? <MarketingPhoto
+                src={url}
+                sourceSet={photoSrcSets[slot.shotIndex]}
+                loading={imageLoading}
+                sizes={imageSizes}
+              /> : <SoftImage
                 src={url}
                 alt=""
                 fill
