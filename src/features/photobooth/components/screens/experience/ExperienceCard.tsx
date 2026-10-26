@@ -70,6 +70,7 @@ export default function ExperienceCard({ experience, index, isSelected, onSelect
             frameId={experience.defaultFrameId}
             lookId={experience.defaultLookId}
             photoUrls={getDemoPhotoUrls(experience.id)}
+            imageLoading="lazy"
             imageSizes="(min-width: 1024px) 170px, 110px"
           />
         </span>

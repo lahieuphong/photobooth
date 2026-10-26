@@ -30,20 +30,20 @@ export function useSweetMotion(ref: RefObject<HTMLDivElement | null>) {
     }, { root, threshold: 0 })
 
     function scan(parent: Element) {
-      const elements = [parent, ...parent.querySelectorAll(TARGETS)]
+      const elements = [parent, ...parent.querySelectorAll(TARGETS)].filter((element) => element.matches(TARGETS) && !seen.has(element))
+      // Read all geometry before setting attributes that start CSS animations.
+      // This avoids a style/layout flush between each section during hydration.
+      const reveals = observer && !reduced.matches ? elements.filter((element) => element.hasAttribute('data-reveal')) : []
+      const bottom = reveals.length ? root!.getBoundingClientRect().bottom : 0
+      const pending = new Set(reveals.filter((element) => element.getBoundingClientRect().top >= bottom))
       for (const element of elements) {
-        if (!element.matches(TARGETS) || seen.has(element)) continue
         seen.add(element)
         // Only arm below-the-fold content after hydration, and only if observation works.
         // Initial viewport, unsupported browsers and server HTML always remain visible.
         if (element.hasAttribute('data-reveal')) {
-          if (observer && !reduced.matches && element.getBoundingClientRect().top >= root!.getBoundingClientRect().bottom) {
-            element.setAttribute('data-reveal-state', 'pending')
-          } else {
-            element.setAttribute('data-reveal-state', 'shown')
-          }
+          element.setAttribute('data-reveal-state', pending.has(element) ? 'pending' : 'shown')
         }
-        observer?.observe(element)
+        if (pending.has(element) || element.matches(AMBIENT)) observer?.observe(element)
       }
       for (const element of [parent, ...parent.querySelectorAll('[data-parallax]')]) {
         if (element instanceof HTMLElement && element.hasAttribute('data-parallax')) parallax.add(element)
@@ -55,7 +55,8 @@ export function useSweetMotion(ref: RefObject<HTMLDivElement | null>) {
       const enabled = !document.hidden && !reduced.matches && desktop.matches
       for (const element of parallax) {
         const depth = Number(element.dataset.parallax) || 0
-        element.style.setProperty('--parallax-y', `${enabled ? Math.min(12, Math.max(-12, root!.scrollTop * depth)) : 0}px`)
+        const value = `${enabled ? Math.min(12, Math.max(-12, root!.scrollTop * depth)) : 0}px`
+        if (element.style.getPropertyValue('--parallax-y') !== value) element.style.setProperty('--parallax-y', value)
       }
     }
 

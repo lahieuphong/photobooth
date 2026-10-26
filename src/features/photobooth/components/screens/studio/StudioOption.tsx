@@ -1,5 +1,5 @@
 import { Check } from 'lucide-react'
-import type { ReactNode } from 'react'
+import type { KeyboardEventHandler, ReactNode, Ref } from 'react'
 
 type StudioOptionProps = {
   isSelected: boolean
@@ -7,17 +7,22 @@ type StudioOptionProps = {
   label: string
   caption?: string
   disabled?: boolean
+  buttonRef: Ref<HTMLButtonElement>
+  onKeyDown: KeyboardEventHandler<HTMLButtonElement>
   children: ReactNode
 }
 
 /** A preset tile (look, frame or layout); one per option in the active tab's radio group. */
-export default function StudioOption({ isSelected, onClick, label, caption, disabled = false, children }: StudioOptionProps) {
+export default function StudioOption({ isSelected, onClick, label, caption, disabled = false, buttonRef, onKeyDown, children }: StudioOptionProps) {
   return (
     <button
       type="button"
+      ref={buttonRef}
       role="radio"
       aria-checked={isSelected}
+      tabIndex={isSelected ? 0 : -1}
       onClick={onClick}
+      onKeyDown={onKeyDown}
       disabled={disabled}
       className={[
         'group relative flex min-w-0 flex-col items-center gap-1.5 rounded-[18px] p-1.5 pb-2 text-center',

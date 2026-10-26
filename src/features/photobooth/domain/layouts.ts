@@ -145,16 +145,18 @@ export function planSlotDraws(
   sourceSizes: ReadonlyArray<{ width: number; height: number }>,
   scale: number
 ): SlotDraw[] {
-  return layout.slots.map((slot) => {
-    const source = sourceSizes[slot.shotIndex]
-    const x = Math.round(slot.x * scale)
-    const y = Math.round(slot.y * scale)
-    const width = Math.round((slot.x + slot.width) * scale) - x
-    const height = Math.round((slot.y + slot.height) * scale) - y
-    return {
-      shotIndex: slot.shotIndex,
-      crop: computeCoverCrop(source.width, source.height, width, height),
-      dest: { x, y, width, height },
-    }
-  })
+  return layout.slots.map((slot) => planSlotDraw(slot, sourceSizes[slot.shotIndex], scale))
+}
+
+/** The same geometry for exporters that decode and draw one source photo at a time. */
+export function planSlotDraw(slot: PhotoboothLayoutSlot, source: { width: number; height: number }, scale: number): SlotDraw {
+  const x = Math.round(slot.x * scale)
+  const y = Math.round(slot.y * scale)
+  const width = Math.round((slot.x + slot.width) * scale) - x
+  const height = Math.round((slot.y + slot.height) * scale) - y
+  return {
+    shotIndex: slot.shotIndex,
+    crop: computeCoverCrop(source.width, source.height, width, height),
+    dest: { x, y, width, height },
+  }
 }

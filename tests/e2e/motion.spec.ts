@@ -4,7 +4,7 @@ import { holdCameraRequests } from './helpers/fakeCamera'
 import { expectPerkFooterAtEnd } from './helpers/layout'
 
 const VIEWPORTS = [
-  [320, 568], [375, 667], [390, 844], [430, 932], [768, 1024],
+  [320, 568], [360, 640], [375, 667], [390, 844], [430, 932], [768, 1024],
   [1024, 768], [1280, 800], [1440, 900], [1920, 1080], [844, 390],
 ] as const
 

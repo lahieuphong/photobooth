@@ -9,7 +9,7 @@ import {
 } from '@/src/features/photobooth/domain/layouts'
 import { getLook, toCssFilter, type PhotoboothLookId } from '@/src/features/photobooth/domain/looks'
 
-type PhotoCompositionProps = {
+export type PhotoCompositionProps = {
   layoutId: PhotoboothLayoutId
   frameId: PhotoboothFrameId
   lookId: PhotoboothLookId
@@ -20,6 +20,8 @@ type PhotoCompositionProps = {
   dateLabel?: string
   className?: string
   imageSizes?: string
+  /** Marketing sections can defer photos while session previews keep their eager behavior. */
+  imageLoading?: 'eager' | 'lazy'
 }
 
 const PLACEHOLDER_TONES = [
@@ -72,6 +74,7 @@ export default function PhotoComposition({
   dateLabel = '',
   className = '',
   imageSizes = '(max-width: 768px) 45vw, 320px',
+  imageLoading = 'eager',
 }: PhotoCompositionProps) {
   const layout = getLayout(layoutId)
   const frame = getFrame(frameId)
@@ -104,7 +107,7 @@ export default function PhotoComposition({
                 alt=""
                 fill
                 unoptimized
-                loading="eager"
+                loading={imageLoading}
                 sizes={imageSizes}
                 draggable={false}
                 className="object-cover"

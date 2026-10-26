@@ -56,7 +56,7 @@
 @theme inline {
   --font-sans: var(--font-be-vietnam), system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: var(--font-newsreader), Georgia, "Times New Roman", serif;
-  /* Only loaded by the Welcome screen; elsewhere these fall back gracefully. */
+  /* BrandPage supplies these families on each playful screen. */
   --font-bubble: var(--font-baloo), "Arial Rounded MT Bold", system-ui, sans-serif;
   --font-hand: var(--font-patrick-hand), "Comic Sans MS", cursive;
 }

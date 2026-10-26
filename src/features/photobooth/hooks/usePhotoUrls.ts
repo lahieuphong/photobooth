@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { loadPhotoResult } from '@/src/features/photobooth/services/storage/photoStore'
+import { createBoundedCache } from '@/src/features/photobooth/utils/boundedCache'
 
 type PhotoUrls = {
   /** Object URLs aligned with `ids`; null for empty slots, problem photos and photos still loading. */
@@ -19,7 +20,7 @@ type PhotoUrls = {
 }
 
 /** Photos already decoded once in this page; decoding is only needed to catch unusable blobs. */
-const decodedIds = new Set<string>()
+const decodedIds = createBoundedCache<string, true>(128)
 
 async function canDecode(blob: Blob) {
   try {
@@ -76,31 +77,31 @@ export function usePhotoUrls(ids: Array<string | null>): PhotoUrls {
       for (const id of wanted) {
         if (cache.has(id)) continue
         const result = await loadPhotoResult(id).catch(() => ({ status: 'error' as const }))
-        const usable = result.status === 'found' && (decodedIds.has(id) || (await canDecode(result.blob)))
+        const usable = result.status === 'found' && (decodedIds.get(id) || (await canDecode(result.blob)))
         if (!isCurrent()) return
         if (result.status === 'missing') missing.add(id)
         else if (result.status === 'error' || !usable) unreadable.add(id)
         else {
-          decodedIds.add(id)
+          decodedIds.set(id, true)
           cache.set(id, URL.createObjectURL(result.blob))
         }
       }
 
       const urls = new Map([...cache].filter(([id]) => wanted.has(id)))
       setSnapshot({ key: loadKey, urls, missing, unreadable })
-
-      // Revoke after React has committed the snapshot that no longer shows them,
-      // unless a newer run has started (it takes over the cleanup).
-      window.setTimeout(() => {
-        if (!isCurrent()) return
-        for (const [id, url] of cache) {
-          if (wanted.has(id)) continue
-          URL.revokeObjectURL(url)
-          cache.delete(id)
-        }
-      }, 0)
     })()
   }, [key, loadKey])
+
+  // Effects run after commit. A timeout from the loader cannot guarantee that
+  // the DOM has stopped referencing a dropped URL under concurrent rendering.
+  useEffect(() => {
+    if (snapshot.key !== loadKey) return
+    for (const [id, url] of cacheRef.current) {
+      if (snapshot.urls.has(id)) continue
+      URL.revokeObjectURL(url)
+      cacheRef.current.delete(id)
+    }
+  }, [snapshot, loadKey])
 
   useEffect(() => {
     const cache = cacheRef.current

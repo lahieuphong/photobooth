@@ -90,6 +90,7 @@ export function ExperienceShowcase() {
                     frameId={experience.defaultFrameId}
                     lookId={experience.defaultLookId}
                     photoUrls={getDemoPhotoUrls(experience.id)}
+                    imageLoading="lazy"
                     imageSizes="160px"
                   />
                 </div>
@@ -147,6 +148,7 @@ export function FrameShowcase() {
                       frameId={frameId}
                       lookId={lookId}
                       photoUrls={getDemoPhotoUrls(demoExperienceId)}
+                      imageLoading="lazy"
                       imageSizes="(max-width: 640px) 30vw, 280px"
                     />
                   </div>

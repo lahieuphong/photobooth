@@ -2,7 +2,7 @@ import { getFrame, getFrameOverlayUrl, type PhotoboothFrameId } from '@/src/feat
 import {
   PRINT_HEIGHT,
   PRINT_WIDTH,
-  planSlotDraws,
+  planSlotDraw,
   type PhotoboothLayout,
 } from '@/src/features/photobooth/domain/layouts'
 import { applyLookToPixels, getLook, toCssFilter, type PhotoboothLookId } from '@/src/features/photobooth/domain/looks'
@@ -22,7 +22,7 @@ async function decodeBlob(blob: Blob): Promise<DrawableImage> {
   const url = URL.createObjectURL(blob)
   try {
     const image = await loadImage(url)
-    return { source: image, width: image.naturalWidth, height: image.naturalHeight, close: () => undefined }
+    return { source: image, width: image.naturalWidth, height: image.naturalHeight, close: () => image.removeAttribute('src') }
   } finally {
     URL.revokeObjectURL(url)
   }
@@ -76,13 +76,6 @@ export async function renderCompositionPng({
   const blobs = await Promise.all(shots.map((id) => loadPhoto(id as string)))
   if (blobs.some((blob) => blob === null)) throw new Error('PHOTO_MISSING')
 
-  const decoded = await Promise.allSettled((blobs as Blob[]).map(decodeBlob))
-  const images = decoded.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []))
-  if (images.length !== decoded.length) {
-    images.forEach((image) => image.close())
-    throw new Error('PHOTO_DECODE_FAILED')
-  }
-
   const canvas = document.createElement('canvas')
   try {
     canvas.width = Math.round(PRINT_WIDTH * EXPORT_SCALE)
@@ -97,33 +90,45 @@ export async function renderCompositionPng({
     const look = getLook(lookId)
     const useCanvasFilter = supportsCanvasFilter()
 
-    for (const { shotIndex, crop, dest } of planSlotDraws(layout, images, EXPORT_SCALE)) {
-      const image = images[shotIndex]
-      const { x, y, width, height } = dest
+    // Keep at most one decoded source alive, including twin-strip layouts.
+    // Six 1920×1080 bitmaps alone otherwise occupy roughly 47 MiB before the output canvas.
+    for (const [shotIndex, blob] of (blobs as Blob[]).entries()) {
+      const image = await decodeBlob(blob).catch(() => { throw new Error('PHOTO_DECODE_FAILED') })
+      try {
+        for (const slot of layout.slots) {
+          if (slot.shotIndex !== shotIndex) continue
+          const { crop, dest: { x, y, width, height } } = planSlotDraw(slot, image, EXPORT_SCALE)
 
-      context.save()
-      context.filter = useCanvasFilter ? toCssFilter(look) : 'none'
-      context.drawImage(image.source, crop.sx, crop.sy, crop.sw, crop.sh, x, y, width, height)
-      context.restore()
+          context.save()
+          context.filter = useCanvasFilter ? toCssFilter(look) : 'none'
+          context.drawImage(image.source, crop.sx, crop.sy, crop.sw, crop.sh, x, y, width, height)
+          context.restore()
 
-      if (!useCanvasFilter && look.operations.length > 0) {
-        const pixels = context.getImageData(x, y, width, height)
-        applyLookToPixels(pixels.data, look)
-        context.putImageData(pixels, x, y)
+          if (!useCanvasFilter && look.operations.length > 0) {
+            const pixels = context.getImageData(x, y, width, height)
+            applyLookToPixels(pixels.data, look)
+            context.putImageData(pixels, x, y)
+          }
+        }
+      } finally {
+        image.close()
       }
     }
 
     const overlayUrl = getFrameOverlayUrl(layout, frameId, dateLabel)
     if (overlayUrl) {
       const overlay = await loadImage(overlayUrl)
-      context.drawImage(overlay, 0, 0, canvas.width, canvas.height)
+      try {
+        context.drawImage(overlay, 0, 0, canvas.width, canvas.height)
+      } finally {
+        overlay.removeAttribute('src')
+      }
     }
 
     const png = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
     if (!png) throw new Error('EXPORT_ENCODE_FAILED')
     return png
   } finally {
-    images.forEach((image) => image.close())
     // iOS caps total canvas memory; a zero-sized canvas releases its backing store at once.
     canvas.width = 0
     canvas.height = 0

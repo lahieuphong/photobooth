@@ -2,7 +2,7 @@
 
 import { ArrowRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useState } from 'react'
 import BrandPage from '@/src/features/photobooth/components/shared/brand/BrandPage'
 import BubbleHeading from '@/src/features/photobooth/components/shared/brand/BubbleHeading'
 import PastelBackdrop from '@/src/features/photobooth/components/shared/brand/PastelBackdrop'
@@ -19,6 +19,7 @@ import { PHOTOBOOTH_ROUTES, type PhotoboothRoute } from '@/src/features/photoboo
 import { PHOTOBOOTH_SCREENS } from '@/src/features/photobooth/config/screenState'
 import { SESSION_NOTICE_COPY } from '@/src/features/photobooth/config/sessionNotices'
 import { getResumeRoute } from '@/src/features/photobooth/domain/routeGuard'
+import { useRadioSelection } from '@/src/features/photobooth/hooks/useRadioSelection'
 import { createSession, getCapturedCount } from '@/src/features/photobooth/domain/session'
 import { collectGarbage, endSession } from '@/src/features/photobooth/services/storage/photoStore'
 import { claimSession, releaseSession } from '@/src/features/photobooth/services/storage/sessionOwnership'
@@ -33,8 +34,7 @@ import ExperienceCard from './ExperienceCard'
 import ExperienceHeroArt from './ExperienceHeroArt'
 
 const SCREEN = PHOTOBOOTH_SCREENS.experience
-
-const ARROW_STEPS: Record<string, number> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }
+const STORAGE_ERROR = 'Không thể bắt đầu phiên chụp. Trình duyệt có thể đang chặn lưu trữ dữ liệu.'
 
 function createSessionId() {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -51,11 +51,15 @@ export default function ExperienceScreen() {
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isStarting, setIsStarting] = useState(false)
-  const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const { optionRefs, handleKeyDown: handleOptionKeyDown } = useRadioSelection(PHOTOBOOTH_EXPERIENCES, (experience) => setSelectedId(experience.id))
 
   useEffect(() => {
     let cancelled = false
-    const { session, discarded } = readStoredSession()
+    const { session, discarded, unavailable } = readStoredSession()
+    if (unavailable) {
+      setError(STORAGE_ERROR)
+      return
+    }
     const pending = consumeSessionNotice() ?? (discarded ? 'session-reset' : null)
     if (pending) setNotice(SESSION_NOTICE_COPY[pending])
 
@@ -92,13 +96,19 @@ export default function ExperienceScreen() {
     setError(null)
 
     let session
-    const previous = readStoredSession().session
+    const previousSnapshot = readStoredSession()
+    if (previousSnapshot.unavailable) {
+      setIsStarting(false)
+      setError(STORAGE_ERROR)
+      return
+    }
+    const previous = previousSnapshot.session
     try {
       session = createSession(getExperience(selectedId), createSessionId(), Date.now())
       writeStoredSession(session)
     } catch {
       setIsStarting(false)
-      setError('Không thể bắt đầu phiên chụp. Trình duyệt có thể đang chặn lưu trữ dữ liệu.')
+      setError(STORAGE_ERROR)
       return
     }
 
@@ -112,20 +122,6 @@ export default function ExperienceScreen() {
     void claimSession(session.id)
     void collectGarbage([session.id])
     router.push(PHOTOBOOTH_ROUTES.READY, { scroll: false })
-  }
-
-  /** Radio group keys: arrows move and select (wrapping), Home/End jump to the ends. */
-  function handleOptionKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    const count = PHOTOBOOTH_EXPERIENCES.length
-    let next: number
-    if (event.key in ARROW_STEPS) next = (index + ARROW_STEPS[event.key] + count) % count
-    else if (event.key === 'Home') next = 0
-    else if (event.key === 'End') next = count - 1
-    else return
-
-    event.preventDefault()
-    setSelectedId(PHOTOBOOTH_EXPERIENCES[next].id)
-    optionRefs.current[next]?.focus()
   }
 
   const statusMessage =

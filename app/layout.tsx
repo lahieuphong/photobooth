@@ -16,6 +16,7 @@ const display = Newsreader({
   variable: '--font-newsreader',
   subsets: ['latin', 'vietnamese'],
   style: ['normal', 'italic'],
+  preload: false,
 })
 
 export const metadata: Metadata = {

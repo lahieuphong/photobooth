@@ -31,11 +31,9 @@ import {
 import { useNavigationLock } from '@/src/features/photobooth/hooks/useNavigationLock'
 import { usePhotoboothSession } from '@/src/features/photobooth/hooks/usePhotoboothSession'
 import { usePhotoUrls } from '@/src/features/photobooth/hooks/usePhotoUrls'
-import StudioOption from './StudioOption'
+import StudioOptions, { type StudioTab } from './StudioOptions'
 
 const SCREEN = PHOTOBOOTH_SCREENS.studio
-
-type StudioTab = 'look' | 'frame' | 'layout'
 
 const TABS: Array<{ id: StudioTab; label: string; icon: LucideIcon; title: string; subtitle: string }> = [
   { id: 'look', label: 'Look', icon: Sparkles, title: 'Màu sắc, phong cách ảnh', subtitle: 'Chọn bộ lọc để phù hợp với mood của bạn' },
@@ -243,58 +241,16 @@ export default function StudioScreen() {
               </h2>
               <p className="mt-0.5 text-[13px] text-ink-soft">{activeTab.subtitle}</p>
 
-              <div
-                role="radiogroup"
-                aria-label={activeTab.label}
-                className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(54px,1fr))] gap-2 sm:grid-cols-[repeat(auto-fill,minmax(60px,1fr))] sm:gap-2.5"
-              >
-                {tab === 'look'
-                  ? PHOTOBOOTH_LOOKS.map((look) => (
-                      <StudioOption
-                        key={look.id}
-                        label={look.label}
-                        isSelected={session.lookId === look.id}
-                        disabled={isLocked}
-                        onClick={() => apply((current, now) => setLook(current, look.id, now))}
-                      >
-                        <span className="relative block aspect-square w-full">
-                          {urls[0] ? (
-                            <Image src={urls[0]} alt="" fill unoptimized sizes="80px" className="object-cover" style={{ filter: toCssFilter(look) }} />
-                          ) : null}
-                        </span>
-                      </StudioOption>
-                    ))
-                  : null}
-
-                {tab === 'frame'
-                  ? PHOTOBOOTH_FRAMES.map((frame) => (
-                      <StudioOption
-                        key={frame.id}
-                        label={frame.label}
-                        isSelected={session.frameId === frame.id}
-                        disabled={isLocked}
-                        onClick={() => apply((current, now) => setFrame(current, frame.id, now))}
-                      >
-                        <PhotoComposition {...composition} frameId={frame.id} imageSizes="80px" />
-                      </StudioOption>
-                    ))
-                  : null}
-
-                {tab === 'layout'
-                  ? compatibleLayouts.map((option) => (
-                      <StudioOption
-                        key={option.id}
-                        label={option.label}
-                        caption={`${option.slots.length} ô`}
-                        isSelected={session.layoutId === option.id}
-                        disabled={isLocked}
-                        onClick={() => apply((current, now) => setLayout(current, option.id, now))}
-                      >
-                        <PhotoComposition {...composition} layoutId={option.id} imageSizes="80px" />
-                      </StudioOption>
-                    ))
-                  : null}
-              </div>
+              <StudioOptions
+                tab={tab}
+                label={activeTab.label}
+                composition={composition}
+                layouts={compatibleLayouts}
+                disabled={isLocked}
+                onLookChange={(id) => apply((current, now) => setLook(current, id, now))}
+                onFrameChange={(id) => apply((current, now) => setFrame(current, id, now))}
+                onLayoutChange={(id) => apply((current, now) => setLayout(current, id, now))}
+              />
 
               <p className="mt-4 min-h-[2.5em] rounded-2xl bg-petal px-3 py-2 text-[13px] leading-snug text-cocoa/80" aria-live="polite">
                 {optionDescription}

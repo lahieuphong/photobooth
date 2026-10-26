@@ -4,6 +4,7 @@ import {
   PRINT_WIDTH,
   type PhotoboothLayout,
 } from '@/src/features/photobooth/domain/layouts'
+import { createBoundedCache } from '@/src/features/photobooth/utils/boundedCache'
 
 // Frame artwork is generated from the layout slots instead of shipped as one SVG
 // per layout, so photo windows always match the preview and export geometry.
@@ -123,17 +124,18 @@ export function buildFrameSvg(layout: PhotoboothLayout, frameId: PhotoboothFrame
   )
 }
 
-const frameUrlCache = new Map<string, string | null>()
+const frameUrlCache = createBoundedCache<string, string | null>(64)
 
 export function getFrameOverlayUrl(layout: PhotoboothLayout, frameId: PhotoboothFrameId, dateLabel: string) {
   const key = `${layout.id}|${frameId}|${dateLabel}`
 
-  if (!frameUrlCache.has(key)) {
-    const svg = buildFrameSvg(layout, frameId, dateLabel)
-    frameUrlCache.set(key, svg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}` : null)
-  }
+  const cached = frameUrlCache.get(key)
+  if (cached !== undefined) return cached
 
-  return frameUrlCache.get(key) ?? null
+  const svg = buildFrameSvg(layout, frameId, dateLabel)
+  const url = svg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}` : null
+  frameUrlCache.set(key, url)
+  return url
 }
 
 /** "22.10.2026" style label printed on frames; derived from the session start time. */

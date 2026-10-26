@@ -1,6 +1,6 @@
 import { Baloo_2, Patrick_Hand } from 'next/font/google'
 
-// Welcome-only faces, declared here so the capture flow never downloads them.
+// Playful screen faces, shared by BrandPage across the photobooth flow.
 // Both ship a Vietnamese subset, so diacritics never fall back glyph by glyph.
 export const bubbleFont = Baloo_2({
   variable: '--font-baloo',

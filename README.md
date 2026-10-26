@@ -40,9 +40,14 @@ tests/                                  node:test unit tests for the domain rule
 
 - **One geometry source.** `domain/layouts.ts` defines every slot in a 1200×1566 print.
   The on-screen print, the generated frame SVG and the PNG export all derive from it.
+  Export decodes, draws and closes one source photo at a time, including layouts that
+  repeat a shot, so a six-shot print does not keep six decoded bitmaps alive together.
 - **Photos are stored raw.** Shots are unfiltered JPEG blobs in IndexedDB (`photoStore.ts`);
   session metadata is small JSON in `sessionStorage`. Looks are applied at render time
   (CSS) and at export (`ctx.filter`, with a pixel fallback for browsers without it).
+  Object URLs are retired after the replacement snapshot commits and on unmount.
+  Derived caches are bounded: 128 decoded-photo ids and 64 frame overlays; evicting
+  either only recomputes a value and never deletes stored photos.
 - **Camera.** Ready and Capture share one `MediaStream` (`cameraStream.ts`), so moving
   between them never opens the camera twice. The front camera is preferred and mirrored,
   and the saved photo matches the mirrored preview. Startup has a 12 s watchdog: a request
@@ -56,6 +61,15 @@ tests/                                  node:test unit tests for the domain rule
 - **Kiosk mode** (shared devices): open any page once with `?kiosk=1` (15 min) or
   `?kiosk=<minutes>`; `?kiosk=off` turns it off. Idle sessions are warned, then ended and
   their photos deleted; capture and export are never interrupted.
+- **Motion and input.** `useSweetMotion` observes the actual `BrandPage` scroller,
+  batches geometry reads before animation writes, and pauses ambient motion when
+  hidden or outside the viewport. Content stays visible without JavaScript or
+  IntersectionObserver; reduced motion disables nonessential effects. Experience
+  and Studio share radio keyboard behavior (arrows, Home/End and one tab stop).
+- **Loading.** Below-the-fold marketing compositions use native lazy loading.
+  The occasional Newsreader face loads on demand; the main interface and bubble
+  faces retain their preload. A denied session-storage read is reported separately
+  from an empty session, so starting over never overwrites unreadable metadata.
 
 ## Development
 
