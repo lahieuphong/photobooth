@@ -2,6 +2,7 @@ import { Camera, ChevronRight, Heart, ShieldCheck, Star } from 'lucide-react'
 import Link from 'next/link'
 import type { Perk } from '@/src/features/photobooth/components/shared/brand/PerkStrip'
 import PhotoComposition from '@/src/features/photobooth/components/shared/composition/PhotoComposition'
+import { getDemoPhotoSrcSets, getDemoPhotoUrls } from '@/src/features/photobooth/config/demoPhotos'
 import type { PhotoboothExperience } from '@/src/features/photobooth/config/experiences'
 import { PHOTOBOOTH_ROUTES } from '@/src/features/photobooth/config/routes'
 import type { PhotoboothFrameId } from '@/src/features/photobooth/domain/frames'
@@ -43,7 +44,14 @@ export function PresetSummary({ experience, layout, frameId, lookId, capturedCou
       className={`group flex items-center gap-4 p-3 transition-[translate,box-shadow] duration-200 ease-out-soft hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:p-4 ${READY_CARD_CLASS_NAME}`}
     >
       <span className="w-14 shrink-0 -rotate-3 overflow-hidden rounded-[4px] shadow-[0_8px_14px_-8px_rgba(74,29,36,0.5)] ring-2 ring-white transition-[rotate] group-hover:rotate-0 sm:w-16">
-        <PhotoComposition layoutId={layout.id} frameId={frameId} lookId={lookId} placeholder imageSizes="64px" />
+        <PhotoComposition
+          layoutId={layout.id}
+          frameId={frameId}
+          lookId={lookId}
+          photoUrls={getDemoPhotoUrls(experience.id)}
+          photoSrcSets={getDemoPhotoSrcSets(experience.id)}
+          imageSizes="64px"
+        />
       </span>
       <span className="min-w-0 flex-1">
         <span className="inline-block rounded-full bg-butter px-2.5 py-0.5 text-[11px] font-bold tracking-[0.12em] text-accent-deep uppercase">
