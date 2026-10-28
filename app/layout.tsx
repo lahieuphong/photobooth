@@ -36,12 +36,12 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: getAssetPath('/pwa-icons/icon-192.png'),
+        url: getAssetPath('/pwa-icons/icon-192-transparent.png'),
         type: 'image/png',
         sizes: '192x192',
       },
       {
-        url: getAssetPath('/pwa-icons/icon-512.png'),
+        url: getAssetPath('/pwa-icons/icon-512-transparent.png'),
         type: 'image/png',
         sizes: '512x512',
       },
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
         type: 'image/png',
       },
     ],
-    shortcut: [getAssetPath('/pwa-icons/icon-192.png')],
+    shortcut: [getAssetPath('/pwa-icons/icon-192-transparent.png')],
   },
   appleWebApp: {
     capable: true,

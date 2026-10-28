@@ -1,4 +1,4 @@
-const STATIC_CACHE = 'photobooth-static-v5'
+const STATIC_CACHE = 'photobooth-static-v6'
 
 // Caches created by this app, including the pre-rebrand name, so activation can
 // drop stale artwork without touching other caches on the same github.io origin.
@@ -6,8 +6,8 @@ const OWN_CACHE_PREFIXES = ['photobooth-static-', 'btmt-photobooth-static-']
 
 const PRECACHE_ASSETS = [
   'images/logos/photobooth-logo-160.webp',
-  'pwa-icons/icon-192.png',
-  'pwa-icons/icon-512.png',
+  'pwa-icons/icon-192-transparent.png',
+  'pwa-icons/icon-512-transparent.png',
 ]
 
 function getScopedAssetUrl(path) {
