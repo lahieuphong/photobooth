@@ -1,169 +1,117 @@
-# Photobooth
+<p align="center">
+  <img src="public/images/logos/photobooth-logo-320.webp" width="180" alt="Photobooth">
+</p>
 
-Story-first photobooth that runs fully in the browser and is deployed as a static site to
-GitHub Pages: <https://lahieuphong.github.io/photobooth/>.
+<h3 align="center">Mỗi khung hình là một câu chuyện</h3>
 
-## User flow
+<p align="center">
+  Photobooth chạy hoàn toàn trên trình duyệt: chọn trải nghiệm, chụp, chỉnh và tải ảnh PNG.<br>
+  Ảnh không bao giờ rời khỏi máy của bạn.
+</p>
+
+<p align="center">
+  <a href="https://lahieuphong.github.io/photobooth/"><b>Dùng thử</b></a> ·
+  Next.js 15 · React 19 · Tailwind CSS 4 · TypeScript
+</p>
+
+![Trang chủ Photobooth](docs/images/welcome.webp)
+
+## Tính năng
+
+- **5 trải nghiệm dựng sẵn**: số ảnh, bố cục, tông màu, khung và gợi ý tạo dáng đã chọn sẵn.
+- **Chụp ngay trên trình duyệt**: camera trước được lật như gương, hẹn giờ Tắt / 5s / 10s / 15s, chụp lại từng ảnh.
+- **Studio**: 5 tông màu (Clean, Warm, Mono, Dreamy, Flash), 4 khung (Không khung, Minimal, Editorial, Play) và 3 bố cục (Lưới 2×2, Dải dọc ×2, Lưới 2×3). Ảnh gốc không bị thay đổi.
+- **Tải ảnh PNG** 1800×2349 px, đủ in 4×6".
+- **Riêng tư**: ảnh lưu trong IndexedDB của trình duyệt, không tải lên máy chủ nào.
+- **Chế độ kiosk** cho máy dùng chung: tự kết thúc phiên và xóa ảnh khi không có ai dùng.
+
+## Trải nghiệm
+
+| Quick 4 | Editorial | Duo | Story 6 | Play |
+|:-:|:-:|:-:|:-:|:-:|
+| <img src="docs/images/sample-quick-4.webp" width="150" alt="Quick 4"> | <img src="docs/images/sample-editorial.webp" width="150" alt="Editorial"> | <img src="docs/images/sample-duo.webp" width="150" alt="Duo"> | <img src="docs/images/sample-story-6.webp" width="150" alt="Story 6"> | <img src="docs/images/sample-play.webp" width="150" alt="Play"> |
+| Nhanh, gọn, tự nhiên | Thần thái trang bìa | Hai người, một khung hình | Kể chuyện bằng 6 khung hình | Vui hết cỡ |
+| 4 ảnh · Lưới 2×2 | 4 ảnh · Dải dọc ×2 | 4 ảnh · Lưới 2×2 | 6 ảnh · Lưới 2×3 | 4 ảnh · Lưới 2×2 |
+
+## Luồng sử dụng
 
 ```
-Welcome → Experience → Ready → Capture → Review → Studio → Result
-                                  ↑          │
-                                  └ retake ──┘
+Trang chủ → 01 Trải nghiệm → 02 Chuẩn bị → 03 Chụp → 04 Xem lại → 05 Studio → 06 Kết quả
+                                             ↑            │
+                                             └─ chụp lại ─┘
 ```
 
-| Route | Purpose |
-|---|---|
-| `/welcome` | Cover screen |
-| `/experience` | Pick one of the presets in `config/experiences.ts` (shot count, layout, default look and frame, pose prompts) |
-| `/ready` | Camera permission, live preview, countdown (0 / 5 / 10 / 15 s) |
-| `/capture` | Takes the 4 or 6 shots, or a single retake |
-| `/review` | Contact sheet; retake any single shot and keep/replace it |
-| `/studio` | Look, frame and compatible layout; never modifies the original photos |
-| `/result` | Final print, PNG download (`photobooth-YYYYMMDD-HHmmss.png`), edit again or new session |
+Mỗi bước được kiểm tra quyền truy cập: mở thẳng link hoặc tải lại trang khi không có phiên phù hợp sẽ chuyển về bước hợp lệ gần nhất.
 
-There is no payment or package step. Every route is guarded (`domain/routeGuard.ts`): a deep
-link or reload without a fitting session redirects to the nearest valid screen.
+| Chọn trải nghiệm | Chuẩn bị |
+|:-:|:-:|
+| ![Chọn trải nghiệm](docs/images/experience.webp) | ![Chuẩn bị](docs/images/ready.webp) |
+| **Chụp** | **Xem lại** |
+| ![Chụp](docs/images/capture.webp) | ![Xem lại](docs/images/review.webp) |
+| **Studio** | **Kết quả** |
+| ![Studio](docs/images/studio.webp) | ![Kết quả](docs/images/result.webp) |
 
-## Architecture
+<sub>Ảnh trên là bản thiết kế UI; giao diện thực tế có thể khác đôi chút.</sub>
 
-```
-app/(photobooth)/<route>/page.tsx      thin route files
-src/features/photobooth/
-  components/screens/<route>/           one screen component per route
-  components/shared/                    camera viewport, print composition, controls, layout
-  config/                               routes, screen steps, experience presets
-  domain/                               pure rules: session, route guard, layouts, frames, looks
-  hooks/                                useCamera, usePhotoboothSession, usePhotoUrls
-  services/camera|export|storage/       MediaStream, canvas export, persistence
-tests/                                  node:test unit tests for the domain rules
-```
+<details>
+<summary><b>Nhận diện thương hiệu</b></summary>
 
-- **One geometry source.** `domain/layouts.ts` defines every slot in a 1200×1566 print.
-  The on-screen print, the generated frame SVG and the PNG export all derive from it.
-  Export decodes, draws and closes one source photo at a time, including layouts that
-  repeat a shot, so a six-shot print does not keep six decoded bitmaps alive together.
-- **Photos are stored raw.** Shots are unfiltered JPEG blobs in IndexedDB (`photoStore.ts`);
-  session metadata is small JSON in `sessionStorage`. Looks are applied at render time
-  (CSS) and at export (`ctx.filter`, with a pixel fallback for browsers without it).
-  Object URLs are retired after the replacement snapshot commits and on unmount.
-  Derived caches are bounded: 128 decoded-photo ids and 64 frame overlays; evicting
-  either only recomputes a value and never deletes stored photos.
-- **Camera.** Ready and Capture share one `MediaStream` (`cameraStream.ts`), so moving
-  between them never opens the camera twice. The front camera is preferred and mirrored,
-  and the saved photo matches the mirrored preview. Startup has a 12 s watchdog: a request
-  that never settles is reported (never duplicated, since `getUserMedia` cannot be
-  cancelled) and a late stream is still used.
-- **Sessions and storage.** Each tab owns its session through a Web Lock and refreshes a
-  heartbeat in IndexedDB every minute, independent of user activity. Garbage collection
-  only removes ended sessions, or sessions no tab holds whose heartbeat is older than 24 h
-  (kiosk: idle timeout + 5 min). Photos that had to fall back to memory are tracked one by
-  one, so warnings reflect the current session only.
-- **Kiosk mode** (shared devices): open any page once with `?kiosk=1` (15 min) or
-  `?kiosk=<minutes>`; `?kiosk=off` turns it off. Idle sessions are warned, then ended and
-  their photos deleted; capture and export are never interrupted.
-- **Motion and input.** `useSweetMotion` observes the actual `BrandPage` scroller,
-  batches geometry reads before animation writes, and pauses ambient motion when
-  hidden or outside the viewport. Content stays visible without JavaScript or
-  IntersectionObserver; reduced motion disables nonessential effects. Experience
-  and Studio share radio keyboard behavior (arrows, Home/End and one tab stop).
-- **Loading.** Below-the-fold marketing compositions use native lazy loading.
-  Static `picture` sources let the browser choose 160/320 px demo variants or the
-  unchanged master, even with `images.unoptimized`. `MarketingPhoto` uses native
-  image decoding without client image state; session previews retain `SoftImage`.
-  Hero photos stay eager; the
-  two marketing headlines paint without opacity/entrance delays. Fonts are
-  registered once in the root layout: only Be Vietnam Pro 400 and the single
-  Baloo 2 Latin/Vietnamese variable subset preload. Secondary interface weights
-  and decorative fonts load on demand; Newsreader uses the actual UI weight, 400.
-  The hero's fixed “Photobooth” label has its own 1.2 KB Newsreader subset with
-  identical glyphs; camera messages keep the complete Vietnamese face. The
-  screen-reader-only mobile hint does not download the handwriting face.
-  A denied session-storage read is reported separately
-  from an empty session, so starting over never overwrites unreadable metadata.
+![Logo và nhận diện](docs/images/brand.webp)
 
-## Development
+</details>
 
-The lockfile is Yarn 1. If your global `yarn` is Yarn 2+, run scripts through Corepack so
-the lockfile is not rewritten:
+## Chạy dự án
+
+Cần Node ≥ 22.18. Lockfile dùng Yarn 1; nếu `yarn` trên máy là bản 2+, hãy chạy qua Corepack để không ghi đè lockfile:
 
 ```bash
 corepack yarn@1.22.22 install --frozen-lockfile
-corepack yarn@1.22.22 dev        # http://localhost:3000/welcome
-corepack yarn@1.22.22 lint
-corepack yarn@1.22.22 typecheck
-corepack yarn@1.22.22 test       # needs Node ≥ 22.18 (runs .ts tests natively)
-corepack yarn@1.22.22 build      # static export to ./out
+corepack yarn@1.22.22 dev         # http://localhost:3000/welcome
 ```
 
-### End-to-end tests
-
-Playwright smoke tests (`tests/e2e`) run against the production export served under the
-real base path, in Chromium with its built-in fake camera — a synthetic test pattern, so
-they are mocked-camera tests, not a substitute for real devices.
+| Lệnh | Việc làm |
+|---|---|
+| `lint` · `typecheck` | ESLint và TypeScript |
+| `test` | Unit test (`node:test`) cho phần logic |
+| `build` | Xuất static site ra `./out` (base path `/photobooth`) |
+| `test:e2e` | Playwright trên bản build, dùng camera giả của Chromium |
 
 ```bash
-corepack yarn@1.22.22 playwright install --no-shell chromium   # once per machine (full Chromium)
-corepack yarn@1.22.22 build                         # the tests serve ./out under /photobooth
-corepack yarn@1.22.22 test:e2e
+corepack yarn@1.22.22 playwright install --no-shell chromium   # một lần cho mỗi máy
+corepack yarn@1.22.22 build && corepack yarn@1.22.22 test:e2e
 ```
 
-`E2E_BASE_PATH` and `E2E_PORT` override the defaults (`/photobooth`, `4173`). The server
-refuses to start if `./out` was built for a different base path. On failure, traces and
-screenshots are kept in `test-results/` (`yarn playwright show-trace <trace.zip>`).
+Mỗi lần push lên `main`, GitHub Actions chạy lần lượt typecheck → lint → unit test → build → E2E, rồi deploy lên GitHub Pages. Pull request chạy đủ các bước nhưng không deploy.
 
-Production builds use the base path `/photobooth`; CI passes the real Pages path from
-`actions/configure-pages` via `PAGES_BASE_PATH` (see `.github/workflows/deploy.yml`).
+<details>
+<summary><b>Kiến trúc</b></summary>
 
-CI order: install → typecheck → lint → unit tests → build → static export check → E2E →
-deploy. Pull requests run every gate but never deploy; a failing gate blocks the deploy.
-
-## Demo photos
-
-Welcome and Experience use 22 local WebP sample photos (4 Quick 4, 4 Editorial,
-4 Duo, 6 Story 6 and 4 Play). Quick 4 uses the gentle smile / peace sign / cheek
-wink / happy smile collection; Play uses the V-sign wink / laugh / pout /
-finger-heart collection. Demo URLs are kept in `config/demoPhotos.ts` and never
-enter camera capture, session storage or PNG export.
-
-Only optimized photos in `public/images/demo/` are published. Original collections
-stay in the ignored `design-inputs/` directory. `scripts/demo-collections.json`
-records their original filenames, SHA-256 checksums, photo corners, perspective
-correction and small edge trims that remove printed stickers.
-
-To reproduce the assets, supply the five original collections in a local folder:
-
-```bash
-corepack yarn@1.22.22 demo:assets --import-from ./original-collections
+```
+app/(photobooth)/<route>/page.tsx    file route mỏng
+src/features/photobooth/
+  components/screens/<route>/        mỗi route một màn hình
+  components/shared/                 brand, camera, bố cục ảnh in, controls, layout
+  config/                            routes, các bước, trải nghiệm, ảnh demo
+  domain/                            logic thuần: phiên chụp, route guard, bố cục, khung, tông màu
+  hooks/                             useCamera, usePhotoboothSession, usePhotoUrls, …
+  services/                          camera, xuất PNG, lưu trữ
+tests/                               unit test và e2e (Playwright)
 ```
 
-The processor preserves original files and refuses to replace differing existing
-outputs. To review a specific correction separately:
+- **Một nguồn hình học duy nhất**: `domain/layouts.ts` định nghĩa mọi ô ảnh trên tờ in 1200×1566. Bản xem trước, khung SVG và ảnh PNG đều dựa vào đó. Khi xuất ảnh, mỗi lần chỉ giải mã một ảnh để tiết kiệm bộ nhớ.
+- **Ảnh lưu nguyên bản**: ảnh JPEG chưa lọc nằm trong IndexedDB, thông tin phiên là JSON nhỏ trong `sessionStorage`. Tông màu chỉ áp khi hiển thị (CSS) và khi xuất (`ctx.filter`, có phương án dự phòng theo từng pixel).
+- **Camera**: màn Chuẩn bị và Chụp dùng chung một `MediaStream`, nên camera không phải mở lại khi chuyển màn. Nếu camera khởi động quá 12 giây, app báo lỗi nhưng vẫn dùng stream nếu nó đến muộn.
+- **Phiên chụp**: mỗi tab giữ phiên của mình bằng Web Lock và có heartbeat. Phiên bị bỏ quá 24 giờ sẽ được dọn. Nếu IndexedDB không dùng được, ảnh được giữ trong RAM và app cảnh báo rõ.
+- **Kiosk**: mở trang một lần với `?kiosk=1` (15 phút), `?kiosk=<số phút>` hoặc `?kiosk=off` để tắt. Việc chụp và xuất ảnh không bao giờ bị ngắt giữa chừng.
+- **Hiệu năng**: ảnh demo có bản 160/320 px, font được cắt bớt ký tự và chỉ tải trước các font cần thiết, hiệu ứng chuyển động tạm dừng khi ra khỏi màn hình và tôn trọng cài đặt giảm chuyển động.
 
-```bash
-corepack yarn@1.22.22 demo:assets --only editorial/01,duo/01,duo/04 --output-dir ./test-results/demo-review
-```
+</details>
 
-No original photos, QA screenshots or contact sheets are needed for a normal build.
+<details>
+<summary><b>Ảnh demo và font</b></summary>
 
-After regenerating the 22 published masters, run `corepack yarn@1.22.22 demo:variants`.
-This derives uncropped 160/320 px demo WebPs at quality 88 and lossless logo variants,
-and records real photo master
-widths in `config/demoImageVariants.ts`. Masters are never overwritten; high-density
-or large displays can still select them. These sources are marketing-only and never
-enter a camera session or PNG export.
+- 22 ảnh mẫu WebP trong `public/images/demo/` chỉ dùng cho trang giới thiệu, không bao giờ đi vào phiên chụp hay ảnh xuất. Bộ ảnh gốc nằm trong thư mục `design-inputs/` (không commit). `scripts/demo-collections.json` ghi lại tên file, checksum và các bước chỉnh.
+- Tạo lại ảnh: `corepack yarn@1.22.22 demo:assets --import-from ./original-collections`, sau đó chạy `demo:variants` để tạo bản 160/320 px và cập nhật `config/demoImageVariants.ts`.
+- Font Baloo 2 và nhãn Newsreader là bản đã cắt bớt ký tự (giấy phép OFL nằm cạnh file font). Tạo lại bằng `scripts/subset-bubble-font.py` và `scripts/subset-print-label-font.py` (cần `fonttools[woff]==4.57.0`). Đây là công cụ tùy chọn, build bình thường không cần.
 
-The checked-in Baloo 2 v1.700 WOFF2 retains 333 Latin, Vietnamese, combining-mark and
-UI-symbol codepoints in one request, with the same 400–800
-variable weight axis. Its OFL license is beside the font in
-`components/shared/brand/assets/`. To reproduce it, install `fonttools[woff]==4.57.0`
-in a separate Python environment and run
-`python scripts/subset-bubble-font.py <Baloo2-master.ttf>`.
-The script verifies the upstream SHA-256 before subsetting and
-preserves timestamps for deterministic output. The master is available from
-[google/fonts at 8e0cd05](https://github.com/google/fonts/blob/8e0cd05881f3ae5e933ba4161103005a3e841ce0/ofl/baloo2/Baloo2%5Bwght%5D.ttf).
-Font generation is optional build tooling, not a runtime or normal-build dependency.
-
-`scripts/subset-print-label-font.py <Newsreader-400-italic.woff2>` reproduces the
-fixed label subset with the same tooling. Its pinned upstream URL and SHA-256 are
-in the script; the OFL license is beside the subset. If the label text changes,
-update the subset and verify its glyphs before publishing.
+</details>
