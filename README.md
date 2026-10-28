@@ -51,7 +51,7 @@ Mỗi bước được kiểm tra quyền truy cập: mở thẳng link hoặc t
 | **Studio** | **Kết quả** |
 | ![Studio](docs/images/studio.webp) | ![Kết quả](docs/images/result.webp) |
 
-<sub>Ảnh trên là bản thiết kế UI; giao diện thực tế có thể khác đôi chút.</sub>
+<sub>Các bản thiết kế dùng chung bộ ảnh mẫu với màn Chụp/Xem lại; giao diện thực tế có thể khác đôi chút.</sub>
 
 <details>
 <summary><b>Nhận diện thương hiệu</b></summary>
