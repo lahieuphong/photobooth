@@ -1,6 +1,7 @@
 import { RotateCcw, ZoomIn } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import { PhotoSkeleton } from '@/src/features/photobooth/components/shared/feedback/Skeletons'
+import { pad } from '@/src/features/photobooth/utils/format'
 import ShotImage from './ShotImage'
 
 type ShotCardProps = {
@@ -15,8 +16,6 @@ type ShotCardProps = {
   onRetake: () => void
   style?: CSSProperties
 }
-
-const pad = (value: number) => String(value).padStart(2, '0')
 
 /** Polaroid-style card: the photo opens the lightbox, the footer retakes just this shot. */
 export default function ShotCard({ index, url, isLoading, filter, aspectRatio, disabled, onOpen, onRetake, style }: ShotCardProps) {

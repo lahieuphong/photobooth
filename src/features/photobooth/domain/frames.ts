@@ -5,6 +5,7 @@ import {
   type PhotoboothLayout,
 } from '@/src/features/photobooth/domain/layouts'
 import { createBoundedCache } from '@/src/features/photobooth/utils/boundedCache'
+import { pad } from '@/src/features/photobooth/utils/format'
 
 // Frame artwork is generated from the layout slots instead of shipped as one SVG
 // per layout, so photo windows always match the preview and export geometry.
@@ -141,6 +142,5 @@ export function getFrameOverlayUrl(layout: PhotoboothLayout, frameId: Photobooth
 /** "22.10.2026" style label printed on frames; derived from the session start time. */
 export function formatFrameDate(timestamp: number) {
   const date = new Date(timestamp)
-  const pad = (value: number) => String(value).padStart(2, '0')
   return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()}`
 }

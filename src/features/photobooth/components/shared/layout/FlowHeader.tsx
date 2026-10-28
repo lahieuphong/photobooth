@@ -3,9 +3,10 @@ import Link from 'next/link'
 import type { PhotoboothScreen } from '@/src/features/photobooth/config/screenState'
 import { PHOTOBOOTH_SCREENS } from '@/src/features/photobooth/config/screenState'
 import { PHOTOBOOTH_ROUTES, type PhotoboothRoute } from '@/src/features/photobooth/config/routes'
+import { pad } from '@/src/features/photobooth/utils/format'
 import BrandMark from './BrandMark'
 import { SITE_CONTAINER } from './siteLayout'
-import StepIndicator, { STEP_PILL_CLASS_NAME, pad } from './StepIndicator'
+import StepIndicator, { STEP_PILL_CLASS_NAME } from './StepIndicator'
 
 const STEPS = Object.values(PHOTOBOOTH_SCREENS).sort((a, b) => a.step - b.step)
 

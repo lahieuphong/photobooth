@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import BrandPage from '@/src/features/photobooth/components/shared/brand/BrandPage'
 import BubbleHeading from '@/src/features/photobooth/components/shared/brand/BubbleHeading'
 import PastelBackdrop from '@/src/features/photobooth/components/shared/brand/PastelBackdrop'
+import { PANEL_CARD_CLASS_NAME } from '@/src/features/photobooth/components/shared/brand/surfaces'
 import CameraCard from '@/src/features/photobooth/components/shared/camera/CameraCard'
 import CameraViewport from '@/src/features/photobooth/components/shared/camera/CameraViewport'
 import ScreenSkeleton from '@/src/features/photobooth/components/shared/feedback/Skeletons'
@@ -45,12 +46,15 @@ import {
   savePhoto,
   type PhotoStoreStatus,
 } from '@/src/features/photobooth/services/storage/photoStore'
-import { readStoredSession } from '@/src/features/photobooth/services/storage/sessionStorage'
+import { readSessionForUpdate, readStoredSession } from '@/src/features/photobooth/services/storage/sessionStorage'
+import { pad } from '@/src/features/photobooth/utils/format'
 import { navigateWithFallback } from '@/src/features/photobooth/utils/navigation'
-import { CAPTURE_CARD_CLASS_NAME, CountdownOverlay, PoseGuide, ShotProgress, pad } from './CaptureParts'
+import { CountdownOverlay, PoseGuide, ShotProgress } from './CaptureParts'
 
 function isSessionReloadSafe() {
-  const session = readStoredSession().session
+  const { session, unavailable } = readStoredSession()
+  // Unreadable storage may hide photos that live only in memory: never risk a reload then.
+  if (unavailable) return false
   return !session || getMemoryOnlyPhotos(getReferencedPhotoIds(session)).length === 0
 }
 
@@ -79,6 +83,10 @@ function wait(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms))
 }
 
+/** The session can be neither read nor changed; shots already attached stay stored. */
+const STORAGE_BLOCKED_COPY =
+  'Trình duyệt đang chặn bộ nhớ phiên nên chưa thể tiếp tục chụp. Hãy thử lại, hoặc kiểm tra cài đặt quyền riêng tư của trình duyệt.'
+
 function describeCaptureError(error: unknown) {
   if (error instanceof Error && error.message === 'CAPTURE_FRAME_FAILED') {
     return 'Không lấy được hình từ camera. Giữ yên một chút rồi thử lại.'
@@ -91,6 +99,9 @@ function describeCaptureError(error: unknown) {
   }
   if (error instanceof PhotoboothSessionError) {
     return 'Phiên chụp đã thay đổi ở nơi khác. Hãy tải lại trang.'
+  }
+  if (error instanceof Error && error.message === 'SESSION_STORAGE_UNAVAILABLE') {
+    return STORAGE_BLOCKED_COPY
   }
   return 'Đã có lỗi khi chụp. Vui lòng thử lại.'
 }
@@ -193,7 +204,11 @@ export default function CaptureScreen() {
   const runCapture = useCallback(async () => {
     if (lockRef.current || !cameraReadyRef.current) return
 
-    const initial = readStoredSession().session
+    const { session: initial, unavailable } = readStoredSession()
+    if (unavailable) {
+      setError(STORAGE_BLOCKED_COPY)
+      return
+    }
     const firstTarget = initial ? getCaptureTarget(initial) : null
     if (!initial || !firstTarget) return
 
@@ -215,7 +230,7 @@ export default function CaptureScreen() {
 
     try {
       for (let shotsThisRun = 0; shotsThisRun < plannedShots; shotsThisRun += 1) {
-        const latest = readStoredSession().session
+        const latest = readSessionForUpdate()
         if (!latest) throw new PhotoboothSessionError('session missing')
 
         const target = getCaptureTarget(latest)
@@ -258,7 +273,7 @@ export default function CaptureScreen() {
       }
 
       if (!aliveRef.current || run.cancelled) return
-      const finished = readStoredSession().session
+      const finished = readSessionForUpdate()
       if (!finished) throw new PhotoboothSessionError('session missing')
 
       if (isRetake) {
@@ -451,7 +466,7 @@ export default function CaptureScreen() {
           {notes.length > 0 ? (
             <div className={`flex flex-col gap-2 ${AREA.notes}`}>
               {notes.map((note) => (
-                <p key={note} className={`px-4 py-3 text-[13px] leading-snug text-ink-soft ${CAPTURE_CARD_CLASS_NAME}`}>
+                <p key={note} className={`px-4 py-3 text-[13px] leading-snug text-ink-soft ${PANEL_CARD_CLASS_NAME}`}>
                   {note}
                 </p>
               ))}

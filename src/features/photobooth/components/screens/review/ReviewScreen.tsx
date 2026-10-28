@@ -31,11 +31,10 @@ import {
 import { useNavigationLock } from '@/src/features/photobooth/hooks/useNavigationLock'
 import { usePhotoboothSession } from '@/src/features/photobooth/hooks/usePhotoboothSession'
 import { usePhotoUrls } from '@/src/features/photobooth/hooks/usePhotoUrls'
+import { pad } from '@/src/features/photobooth/utils/format'
 import ShotCard from './ShotCard'
 import ShotImage from './ShotImage'
 import ShotLightbox from './ShotLightbox'
-
-const pad = (value: number) => String(value).padStart(2, '0')
 
 const SCREEN = PHOTOBOOTH_SCREENS.review
 

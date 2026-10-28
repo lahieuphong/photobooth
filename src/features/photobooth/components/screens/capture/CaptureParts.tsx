@@ -1,15 +1,12 @@
 import { Check, Sparkles } from 'lucide-react'
+import { PANEL_CARD_CLASS_NAME } from '@/src/features/photobooth/components/shared/brand/surfaces'
 import Image from '@/src/features/photobooth/components/shared/motion/SoftImage'
 import type { CSSProperties } from 'react'
 import type { PhotoboothLayout } from '@/src/features/photobooth/domain/layouts'
+import { pad } from '@/src/features/photobooth/utils/format'
 
 // Note: `.animate-pop` is reserved for the countdown number on this screen
 // (e2e tests read the countdown through it), so nothing else here uses it.
-
-export const pad = (value: number) => String(value).padStart(2, '0')
-
-export const CAPTURE_CARD_CLASS_NAME =
-  'rounded-[24px] bg-white/85 shadow-[0_14px_30px_-22px_rgba(74,29,36,0.45)] ring-1 ring-blush-deep/60'
 
 type ShotState = 'done' | 'current' | 'pending'
 
@@ -50,7 +47,7 @@ export function ShotProgress({ layout, shots, urls, activeShotIndex, isRetake, i
       : `Đang chụp ảnh ${activeShotIndex + 1} trong ${total}`
 
   return (
-    <div className={`p-4 sm:p-5 short:p-3 ${CAPTURE_CARD_CLASS_NAME}`}>
+    <div className={`p-4 sm:p-5 short:p-3 ${PANEL_CARD_CLASS_NAME}`}>
       <div className="flex items-end justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold tracking-[0.2em] text-accent-deep uppercase">Tiến độ</p>
@@ -132,7 +129,7 @@ type PoseGuideProps = {
 /** Every pose of this experience in shot order, so people can see what comes next. */
 export function PoseGuide({ prompts, shots, activeShotIndex }: PoseGuideProps) {
   return (
-    <section aria-labelledby="pose-guide-title" className={`p-4 sm:p-5 ${CAPTURE_CARD_CLASS_NAME}`}>
+    <section aria-labelledby="pose-guide-title" className={`p-4 sm:p-5 ${PANEL_CARD_CLASS_NAME}`}>
       <h2 id="pose-guide-title" className="flex items-center gap-2 font-bubble text-[17px] font-bold text-cocoa">
         <Sparkles aria-hidden="true" size={18} className="text-accent" />
         Gợi ý tạo dáng

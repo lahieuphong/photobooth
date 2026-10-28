@@ -13,6 +13,7 @@ import { claimSession } from '@/src/features/photobooth/services/storage/session
 import { deletePhotos, touchSession } from '@/src/features/photobooth/services/storage/photoStore'
 import {
   clearStoredSession,
+  readSessionForUpdate,
   readStoredSession,
   setSessionNotice,
   writeStoredSession,
@@ -87,11 +88,11 @@ export function usePhotoboothSession(route: PhotoboothRoute) {
    * Applies a pure transition to the latest stored session (never to a stale
    * React copy) and persists it. Only photos this very transition stopped
    * referencing are deleted. Throws PhotoboothSessionError if the session was
-   * replaced since the screen opened, or the storage error if writing failed.
+   * replaced since the screen opened, or the storage error if reading or writing failed.
    * Safe to call after unmount, e.g. to attach a photo that finished saving.
    */
   const update = useCallback((mutate: SessionMutation, { deleteDropped = true }: UpdateOptions = {}) => {
-    const current = readStoredSession().session
+    const current = readSessionForUpdate()
     if (!current || current.id !== sessionIdRef.current) throw new PhotoboothSessionError('session changed')
 
     const next = mutate(current, Date.now())

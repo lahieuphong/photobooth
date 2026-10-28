@@ -1,12 +1,10 @@
 import { ArrowRight, CalendarDays, CircleCheck, Frame, Images, LayoutGrid, ShieldCheck, Sparkles, TriangleAlert } from 'lucide-react'
 import type { CSSProperties } from 'react'
+import { PANEL_CARD_CLASS_NAME } from '@/src/features/photobooth/components/shared/brand/surfaces'
 import PhotoComposition from '@/src/features/photobooth/components/shared/composition/PhotoComposition'
 import type { PhotoboothFrameId } from '@/src/features/photobooth/domain/frames'
 import type { PhotoboothLayoutId } from '@/src/features/photobooth/domain/layouts'
 import type { PhotoboothLook } from '@/src/features/photobooth/domain/looks'
-
-export const RESULT_CARD_CLASS_NAME =
-  'rounded-[24px] bg-white/85 shadow-[0_14px_30px_-22px_rgba(74,29,36,0.45)] ring-1 ring-blush-deep/60'
 
 const CONFETTI = [
   'top-[6%] left-[2%] h-3 w-1.5 rotate-[25deg] bg-accent',
@@ -49,7 +47,7 @@ export function ResultDetails({ shotCount, layoutLabel, experienceTitle, lookLab
   ]
 
   return (
-    <section aria-labelledby="result-details-title" className={`p-4 sm:p-5 ${RESULT_CARD_CLASS_NAME}`}>
+    <section aria-labelledby="result-details-title" className={`p-4 sm:p-5 ${PANEL_CARD_CLASS_NAME}`}>
       <h2 id="result-details-title" className="font-bubble text-[16px] font-bold text-cocoa">
         Thông tin tác phẩm
       </h2>
@@ -85,7 +83,7 @@ type OtherLooksProps = {
 /** The same print in other looks; picking one reopens Studio with that look applied. */
 export function OtherLooks({ looks, layoutId, frameId, photoUrls, dateLabel, disabled, onPick }: OtherLooksProps) {
   return (
-    <section aria-labelledby="other-looks-title" className={`p-4 sm:p-5 ${RESULT_CARD_CLASS_NAME}`}>
+    <section aria-labelledby="other-looks-title" className={`p-4 sm:p-5 ${PANEL_CARD_CLASS_NAME}`}>
       <h2 id="other-looks-title" className="flex items-center gap-2 font-bubble text-[17px] font-bold text-cocoa">
         <Sparkles aria-hidden="true" size={18} className="text-accent" />
         Tạo phiên bản khác

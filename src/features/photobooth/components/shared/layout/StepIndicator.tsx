@@ -1,5 +1,6 @@
 import type { PhotoboothScreen } from '@/src/features/photobooth/config/screenState'
 import { PHOTOBOOTH_STEP_COUNT } from '@/src/features/photobooth/config/screenState'
+import { pad } from '@/src/features/photobooth/utils/format'
 
 type StepIndicatorProps = {
   screen: PhotoboothScreen
@@ -7,8 +8,6 @@ type StepIndicatorProps = {
   /** Color of the current step number. */
   stepClassName?: string
 }
-
-export const pad = (value: number) => String(value).padStart(2, '0')
 
 /** Pill look used on the playful screens (Experience, Ready). */
 export const STEP_PILL_CLASS_NAME =

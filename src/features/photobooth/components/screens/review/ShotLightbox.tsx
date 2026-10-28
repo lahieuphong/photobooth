@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight, RotateCcw, X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
+import { pad } from '@/src/features/photobooth/utils/format'
 import ShotImage from './ShotImage'
 
 type ShotLightboxProps = {
@@ -13,8 +14,6 @@ type ShotLightboxProps = {
   onRetake: () => void
   onClose: () => void
 }
-
-const pad = (value: number) => String(value).padStart(2, '0')
 
 /** Native modal dialog: focus trap, inert background, Escape and focus restore come from the browser. */
 export default function ShotLightbox({ index, total, url, filter, onNavigate, onRetake, onClose }: ShotLightboxProps) {

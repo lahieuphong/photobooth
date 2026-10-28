@@ -1,6 +1,7 @@
 import { Camera, ChevronRight, Heart, ShieldCheck, Star } from 'lucide-react'
 import Link from 'next/link'
 import type { Perk } from '@/src/features/photobooth/components/shared/brand/PerkStrip'
+import { PANEL_CARD_CLASS_NAME } from '@/src/features/photobooth/components/shared/brand/surfaces'
 import PhotoComposition from '@/src/features/photobooth/components/shared/composition/PhotoComposition'
 import { getDemoPhotoSrcSets, getDemoPhotoUrls } from '@/src/features/photobooth/config/demoPhotos'
 import type { PhotoboothExperience } from '@/src/features/photobooth/config/experiences'
@@ -23,9 +24,6 @@ export const READY_PERKS: Perk[] = [
   { title: 'Dễ dàng sử dụng', text: 'Chỉ vài bước là có bộ ảnh hoàn chỉnh.', icon: <Heart aria-hidden="true" size={20} /> },
 ]
 
-export const READY_CARD_CLASS_NAME =
-  'rounded-[24px] bg-white/85 shadow-[0_14px_30px_-22px_rgba(74,29,36,0.45)] ring-1 ring-blush-deep/60'
-
 type PresetSummaryProps = {
   experience: PhotoboothExperience
   layout: PhotoboothLayout
@@ -41,7 +39,7 @@ export function PresetSummary({ experience, layout, frameId, lookId, capturedCou
       href={PHOTOBOOTH_ROUTES.EXPERIENCE}
       scroll={false}
       aria-label={`Trải nghiệm ${experience.title}: ${experience.tagline}, ${experience.shotCount} ảnh, ${layout.label}. Đổi trải nghiệm`}
-      className={`group flex items-center gap-4 p-3 transition-[translate,box-shadow] duration-200 ease-out-soft hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:p-4 ${READY_CARD_CLASS_NAME}`}
+      className={`group flex items-center gap-4 p-3 transition-[translate,box-shadow] duration-200 ease-out-soft hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:p-4 ${PANEL_CARD_CLASS_NAME}`}
     >
       <span className="w-14 shrink-0 -rotate-3 overflow-hidden rounded-[4px] shadow-[0_8px_14px_-8px_rgba(74,29,36,0.5)] ring-2 ring-white transition-[rotate] group-hover:rotate-0 sm:w-16">
         <PhotoComposition

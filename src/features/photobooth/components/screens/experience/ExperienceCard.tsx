@@ -6,6 +6,7 @@ import PhotoComposition from '@/src/features/photobooth/components/shared/compos
 import type { PhotoboothExperience } from '@/src/features/photobooth/config/experiences'
 import { getDemoPhotoSrcSets, getDemoPhotoUrls } from '@/src/features/photobooth/config/demoPhotos'
 import { getLayout } from '@/src/features/photobooth/domain/layouts'
+import { pad } from '@/src/features/photobooth/utils/format'
 
 type ExperienceCardProps = {
   experience: PhotoboothExperience
@@ -82,7 +83,7 @@ export default function ExperienceCard({ experience, index, isSelected, onSelect
         <span className="flex items-start justify-between gap-2">
           <span className="flex min-w-0 items-baseline gap-2">
             <span aria-hidden="true" className="text-[11px] font-semibold text-muted tabular-nums">
-              {String(index + 1).padStart(2, '0')}
+              {pad(index + 1)}
             </span>
             <span id={`${idPrefix}-title`} className="font-bubble text-[19px] leading-tight font-bold text-cocoa sm:text-[21px]">
               {experience.title}

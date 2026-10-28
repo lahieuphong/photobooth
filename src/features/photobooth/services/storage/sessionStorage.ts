@@ -61,6 +61,17 @@ export function readStoredSession(): StoredSessionSnapshot {
   }
 }
 
+/**
+ * The stored session for code about to change it. A failed read throws
+ * SESSION_STORAGE_UNAVAILABLE instead of returning null, so it is never mistaken
+ * for a missing or replaced session.
+ */
+export function readSessionForUpdate(): PhotoboothSession | null {
+  const { session, unavailable } = readStoredSession()
+  if (unavailable) throw new Error('SESSION_STORAGE_UNAVAILABLE')
+  return session
+}
+
 /** Id of the stored session without any cleanup side effects (for background checks). */
 export function peekStoredSessionId(): string | null {
   try {

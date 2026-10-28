@@ -9,7 +9,8 @@ import {
   computeCoverCrop,
   getCompatibleLayouts,
   getLayout,
-  planSlotDraws,
+  planShotDraws,
+  type SlotDraw,
 } from '@/src/features/photobooth/domain/layouts'
 import { PHOTOBOOTH_LOOKS, applyLookToPixels, getLook, toCssFilter } from '@/src/features/photobooth/domain/looks'
 
@@ -74,12 +75,27 @@ describe('export draw plan', () => {
     { width: 640, height: 480 },
   ]
 
+  /** The draws exactly as the exporter makes them: one decoded shot at a time. */
+  function planExport(layout: ReturnType<typeof getLayout>) {
+    return Array.from({ length: layout.shotCount }, (_, shotIndex) => planShotDraws(layout, shotIndex, sources[shotIndex], EXPORT_SCALE)).flat()
+  }
+
   for (const id of PHOTOBOOTH_LAYOUT_IDS) {
     const layout = getLayout(id)
-    const plan = planSlotDraws(layout, sources, EXPORT_SCALE)
+    const plan = planExport(layout)
+    const slotOf = (draw: SlotDraw) =>
+      layout.slots.find(
+        (slot) =>
+          slot.shotIndex === draw.shotIndex &&
+          Math.abs(draw.dest.x / EXPORT_SCALE - slot.x) <= 0.5 &&
+          Math.abs(draw.dest.y / EXPORT_SCALE - slot.y) <= 0.5
+      )
 
-    test(`${id}: every slot draws the shot it is assigned, in slot order`, () => {
-      assert.deepEqual(plan.map((draw) => draw.shotIndex), layout.slots.map((slot) => slot.shotIndex))
+    test(`${id}: every slot is drawn exactly once, with the shot it is assigned`, () => {
+      const drawn = plan.map(slotOf)
+      assert.ok(drawn.every(Boolean), 'each draw lands on a slot of its own shot')
+      assert.equal(new Set(drawn).size, layout.slots.length)
+      assert.equal(plan.length, layout.slots.length)
     })
 
     test(`${id}: photos are cover-cropped, never stretched or read outside the source`, () => {
@@ -94,21 +110,21 @@ describe('export draw plan', () => {
     })
 
     test(`${id}: destination boxes are whole pixels inside the canvas and match the preview geometry`, () => {
-      plan.forEach(({ dest }, index) => {
-        const slot = layout.slots[index]
+      for (const draw of plan) {
+        const { dest } = draw
+        const slot = slotOf(draw)!
         assert.ok([dest.x, dest.y, dest.width, dest.height].every(Number.isInteger))
         assert.ok(dest.x >= 0 && dest.x + dest.width <= Math.round(PRINT_WIDTH * EXPORT_SCALE))
         assert.ok(dest.y >= 0 && dest.y + dest.height <= Math.round(PRINT_HEIGHT * EXPORT_SCALE))
         // The preview places slots by percentage of the same design size.
-        assert.ok(Math.abs(dest.x / EXPORT_SCALE - slot.x) <= 0.5 && Math.abs(dest.width / EXPORT_SCALE - slot.width) <= 1)
-      })
+        assert.ok(Math.abs(dest.width / EXPORT_SCALE - slot.width) <= 1 && Math.abs(dest.height / EXPORT_SCALE - slot.height) <= 1)
+      }
     })
   }
 
   test('vertical-4 prints each shot twice, side by side', () => {
-    const plan = planSlotDraws(getLayout('vertical-4'), sources, EXPORT_SCALE)
     const rows = new Map<number, number[]>()
-    for (const draw of plan) rows.set(draw.dest.y, [...(rows.get(draw.dest.y) ?? []), draw.shotIndex])
+    for (const draw of planExport(getLayout('vertical-4'))) rows.set(draw.dest.y, [...(rows.get(draw.dest.y) ?? []), draw.shotIndex])
     assert.deepEqual([...rows.values()], [[0, 0], [1, 1], [2, 2], [3, 3]])
   })
 })

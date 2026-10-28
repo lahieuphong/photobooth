@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { getExperience } from '@/src/features/photobooth/config/experiences'
 import { createSession } from '@/src/features/photobooth/domain/session'
-import { consumeSessionNotice, readStoredSession, writeStoredSession } from '@/src/features/photobooth/services/storage/sessionStorage'
+import { consumeSessionNotice, readSessionForUpdate, readStoredSession, writeStoredSession } from '@/src/features/photobooth/services/storage/sessionStorage'
 
 const KEY = 'photobooth.session.v2'
 
@@ -31,6 +31,16 @@ test('a storage read failure is unavailable, never an empty or discarded session
     assert.equal(values.get(KEY), 'preserve this data')
     assert.equal(consumeSessionNotice(), null)
   })
+})
+
+test('code about to change the session gets a storage error, not "no session", when reading fails', () => {
+  const session = createSession(getExperience('quick-4'), 's', 123)
+  withStorage(new Map([[KEY, JSON.stringify(session)]]), (storage) => {
+    assert.deepEqual(readSessionForUpdate(), session)
+    storage.getItem = () => { throw new DOMException('blocked', 'SecurityError') }
+    assert.throws(() => readSessionForUpdate(), { message: 'SESSION_STORAGE_UNAVAILABLE' })
+  })
+  withStorage(new Map(), () => assert.equal(readSessionForUpdate(), null))
 })
 
 test('a valid session round-trips, while genuinely malformed JSON is discarded', () => {

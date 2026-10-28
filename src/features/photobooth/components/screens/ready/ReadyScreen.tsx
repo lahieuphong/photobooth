@@ -7,6 +7,7 @@ import BrandPage from '@/src/features/photobooth/components/shared/brand/BrandPa
 import BubbleHeading from '@/src/features/photobooth/components/shared/brand/BubbleHeading'
 import PastelBackdrop from '@/src/features/photobooth/components/shared/brand/PastelBackdrop'
 import PerkFooter from '@/src/features/photobooth/components/shared/brand/PerkFooter'
+import { PANEL_CARD_CLASS_NAME } from '@/src/features/photobooth/components/shared/brand/surfaces'
 import { Doodle, HeartSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
 import TipsCard from '@/src/features/photobooth/components/shared/brand/TipsCard'
 import CameraCard from '@/src/features/photobooth/components/shared/camera/CameraCard'
@@ -40,7 +41,7 @@ import {
   type PhotoStoreStatus,
 } from '@/src/features/photobooth/services/storage/photoStore'
 import { consumeSessionNotice } from '@/src/features/photobooth/services/storage/sessionStorage'
-import { PresetSummary, READY_CARD_CLASS_NAME, READY_PERKS, READY_TIPS } from './ReadyParts'
+import { PresetSummary, READY_PERKS, READY_TIPS } from './ReadyParts'
 
 const SCREEN = PHOTOBOOTH_SCREENS.ready
 
@@ -202,7 +203,7 @@ export default function ReadyScreen() {
               capturedCount={capturedCount}
             />
 
-            <fieldset className={`p-4 ${READY_CARD_CLASS_NAME}`}>
+            <fieldset className={`p-4 ${PANEL_CARD_CLASS_NAME}`}>
               <legend className="float-left mb-3 flex w-full items-center gap-2 font-bubble text-[17px] font-bold text-cocoa">
                 <Clock aria-hidden="true" size={19} className="text-accent" />
                 Hẹn giờ mỗi ảnh
@@ -241,7 +242,7 @@ export default function ReadyScreen() {
           </div>
 
           <div className={`flex flex-col gap-3 ${AREA.status}`}>
-            <div className={`p-4 ${READY_CARD_CLASS_NAME}`}>
+            <div className={`p-4 ${PANEL_CARD_CLASS_NAME}`}>
               <p className="flex items-center gap-2.5 font-bubble text-[16px] font-bold text-cocoa" aria-live="polite">
                 <span aria-hidden="true" className={`size-3 shrink-0 rounded-full ring-4 ring-white ${STATUS_DOT[camera.state.status]}`} />
                 {STATUS_COPY[camera.state.status]}

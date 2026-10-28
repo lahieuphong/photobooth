@@ -136,20 +136,22 @@ export type SlotDraw = {
 }
 
 /**
- * Where each slot's photo is drawn on a canvas `scale` times the design size.
- * The crop is computed for the rounded destination box, so photos are never
- * stretched, only cover-cropped from the center like the on-screen preview.
+ * Where one shot is drawn on a canvas `scale` times the design size: one box per
+ * slot showing it (twin strips print each shot twice), so exporters can decode
+ * and draw one source photo at a time. The crop is computed for the rounded
+ * destination box, so photos are never stretched, only cover-cropped from the
+ * center like the on-screen preview.
  */
-export function planSlotDraws(
+export function planShotDraws(
   layout: PhotoboothLayout,
-  sourceSizes: ReadonlyArray<{ width: number; height: number }>,
+  shotIndex: number,
+  source: { width: number; height: number },
   scale: number
 ): SlotDraw[] {
-  return layout.slots.map((slot) => planSlotDraw(slot, sourceSizes[slot.shotIndex], scale))
+  return layout.slots.filter((slot) => slot.shotIndex === shotIndex).map((slot) => planSlotDraw(slot, source, scale))
 }
 
-/** The same geometry for exporters that decode and draw one source photo at a time. */
-export function planSlotDraw(slot: PhotoboothLayoutSlot, source: { width: number; height: number }, scale: number): SlotDraw {
+function planSlotDraw(slot: PhotoboothLayoutSlot, source: { width: number; height: number }, scale: number): SlotDraw {
   const x = Math.round(slot.x * scale)
   const y = Math.round(slot.y * scale)
   const width = Math.round((slot.x + slot.width) * scale) - x

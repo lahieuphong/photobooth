@@ -3,10 +3,11 @@
 import { ArrowRight, Frame, LayoutGrid, ShieldCheck, Sparkles, type LucideIcon } from 'lucide-react'
 import Image from '@/src/features/photobooth/components/shared/motion/SoftImage'
 import { useRouter } from 'next/navigation'
-import { useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { useState, type CSSProperties } from 'react'
 import BrandPage from '@/src/features/photobooth/components/shared/brand/BrandPage'
 import BubbleHeading from '@/src/features/photobooth/components/shared/brand/BubbleHeading'
 import PastelBackdrop from '@/src/features/photobooth/components/shared/brand/PastelBackdrop'
+import { PANEL_CARD_CLASS_NAME } from '@/src/features/photobooth/components/shared/brand/surfaces'
 import { CameraSticker, HeartSticker, StarSticker } from '@/src/features/photobooth/components/shared/brand/Stickers'
 import PhotoComposition from '@/src/features/photobooth/components/shared/composition/PhotoComposition'
 import Button from '@/src/features/photobooth/components/shared/controls/Button'
@@ -31,6 +32,7 @@ import {
 import { useNavigationLock } from '@/src/features/photobooth/hooks/useNavigationLock'
 import { usePhotoboothSession } from '@/src/features/photobooth/hooks/usePhotoboothSession'
 import { usePhotoUrls } from '@/src/features/photobooth/hooks/usePhotoUrls'
+import { useRadioSelection } from '@/src/features/photobooth/hooks/useRadioSelection'
 import StudioOptions, { type StudioTab } from './StudioOptions'
 
 const SCREEN = PHOTOBOOTH_SCREENS.studio
@@ -41,28 +43,15 @@ const TABS: Array<{ id: StudioTab; label: string; icon: LucideIcon; title: strin
   { id: 'layout', label: 'Bố cục', icon: LayoutGrid, title: 'Bố cục', subtitle: 'Chọn cách sắp xếp ảnh trên tờ in' },
 ]
 
-const PANEL_CARD_CLASS_NAME = 'rounded-[24px] bg-white/85 shadow-[0_14px_30px_-22px_rgba(74,29,36,0.45)] ring-1 ring-blush-deep/60'
-
 export default function StudioScreen() {
   const router = useRouter()
   const { session, isLoaded, apply, actionError } = usePhotoboothSession(PHOTOBOOTH_ROUTES.STUDIO)
   const { urls, isLoading, missingIds, unreadableIds, retry } = usePhotoUrls(session?.shots ?? [])
   const [tab, setTab] = useState<StudioTab>('look')
-  const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
   const [isLeaving, setIsLeaving] = useNavigationLock()
-
-  /** Tabs pattern: arrows move between tabs (wrapping), Home/End jump to the ends. */
-  function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    const steps: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1 }
-    let next: number
-    if (event.key in steps) next = (index + steps[event.key] + TABS.length) % TABS.length
-    else if (event.key === 'Home') next = 0
-    else if (event.key === 'End') next = TABS.length - 1
-    else return
-    event.preventDefault()
-    setTab(TABS[next].id)
-    tabRefs.current[next]?.focus()
-  }
+  const { optionRefs: tabRefs, handleKeyDown: handleTabKeyDown } = useRadioSelection(TABS, (item) => setTab(item.id), {
+    orientation: 'horizontal',
+  })
 
   if (!isLoaded || !session) {
     return (

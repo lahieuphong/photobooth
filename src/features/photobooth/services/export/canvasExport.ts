@@ -2,11 +2,12 @@ import { getFrame, getFrameOverlayUrl, type PhotoboothFrameId } from '@/src/feat
 import {
   PRINT_HEIGHT,
   PRINT_WIDTH,
-  planSlotDraw,
+  planShotDraws,
   type PhotoboothLayout,
 } from '@/src/features/photobooth/domain/layouts'
 import { applyLookToPixels, getLook, toCssFilter, type PhotoboothLookId } from '@/src/features/photobooth/domain/looks'
 import { loadPhoto } from '@/src/features/photobooth/services/storage/photoStore'
+import { pad } from '@/src/features/photobooth/utils/format'
 
 /** 1.5× the design size: 1800×2349 px, enough for a 4×6" print at ~390 dpi. */
 const EXPORT_SCALE = 1.5
@@ -95,10 +96,7 @@ export async function renderCompositionPng({
     for (const [shotIndex, blob] of (blobs as Blob[]).entries()) {
       const image = await decodeBlob(blob).catch(() => { throw new Error('PHOTO_DECODE_FAILED') })
       try {
-        for (const slot of layout.slots) {
-          if (slot.shotIndex !== shotIndex) continue
-          const { crop, dest: { x, y, width, height } } = planSlotDraw(slot, image, EXPORT_SCALE)
-
+        for (const { crop, dest: { x, y, width, height } } of planShotDraws(layout, shotIndex, image, EXPORT_SCALE)) {
           context.save()
           context.filter = useCanvasFilter ? toCssFilter(look) : 'none'
           context.drawImage(image.source, crop.sx, crop.sy, crop.sw, crop.sh, x, y, width, height)
@@ -137,7 +135,6 @@ export async function renderCompositionPng({
 
 /** photobooth-YYYYMMDD-HHmmss.png in local time. */
 export function buildExportFileName(date: Date) {
-  const pad = (value: number) => String(value).padStart(2, '0')
   const day = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`
   const time = `${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`
   return `photobooth-${day}-${time}.png`
